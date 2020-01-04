@@ -82,9 +82,10 @@ def screenIntro():
 
 def screenMainmenu():
     background = load_image('background_mainmenu.png')
-    buttonFunctions = {1: screenChooseLevel}
+    buttonFunctions = {1: screenChooseLevel, 2: screenСustomization}
     all_sprites = pygame.sprite.Group()
-    buttonPlay = Button(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (300, 400), ('Выбрать уровень', 30, pygame.Color('White')))
+    buttonChooseLevel = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (300, 350), ('Выбрать уровень', 30, pygame.Color('White')))
+    buttonСustomization = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (300, 500), ('Кастомизация', 30, pygame.Color('White')))
 
     running = True
     while running:
@@ -92,8 +93,49 @@ def screenMainmenu():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONUP:
-                if buttonPlay.isPressed():
+                if buttonChooseLevel.isPressed():
                     pressedButton = 1
+                    running = False
+                elif buttonСustomization.isPressed():
+                    pressedButton = 2
+                    running = False
+
+        screen.blit(background, (0, 0))
+
+        all_sprites.draw(screen)
+        all_sprites.update()
+
+        pygame.display.flip()
+
+        clock.tick(FPS)
+
+    buttonFunctions[pressedButton]()
+
+
+def screenChooseLevel():
+    background = load_image('background_mainmenu.png')
+    all_sprites = pygame.sprite.Group()
+
+    pass
+
+def screenСustomization():
+    background = load_image('background_mainmenu.png')
+    buttonFunctions = {1: print, 2: print}
+    all_sprites = pygame.sprite.Group()
+    buttonLeft = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (180, 350), (pygame.Color('White'), ((190, 10), (10, 50), (190, 90)), 0))
+    buttonRight = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (420, 350), (pygame.Color('White'), ((10, 10), (190, 50), (10, 90)), 0))
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if buttonLeft.isPressed():
+                    pressedButton = 1
+                    running = False
+                elif buttonRight.isPressed():
+                    pressedButton = 2
                     running = False
 
         screen.blit(background, (0, 0))
@@ -108,33 +150,23 @@ def screenMainmenu():
     buttonFunctions[pressedButton](123)
 
 
-def screenChooseLevel(a):
-    background = load_image('background_mainmenu.png')
-    all_sprites = pygame.sprite.Group()
-
-    pass
-
-
 
 
 
 
 
 class Button(pygame.sprite.Sprite):
-    def __init__(self, spriteGroup, colors, size, posCenter, textInfo):
+    def __init__(self, spriteGroup, colors, size, posCenter):
         super().__init__(spriteGroup)
         self.colors = colors
         self.size = size
         self.posCenter = posCenter
-        self.textInfo = textInfo
-
 
         self.image = pygame.Surface(self.size)
         self.image.fill(self.colors[0])
         self.rect = self.image.get_rect()
         self.rect.centerx = self.posCenter[0]
         self.rect.centery = self.posCenter[1]
-        draw_text(self.image, self.textInfo[0], self.textInfo[1], self.rect.width // 2, self.rect.height // 2 - self.textInfo[1] // 4, self.textInfo[2])
 
     def isPressed(self):
         return self.rect.collidepoint(pygame.mouse.get_pos())
@@ -144,7 +176,33 @@ class Button(pygame.sprite.Sprite):
             self.image.fill(self.colors[1])
         else:
             self.image.fill(self.colors[0])
+        self.draw()
+
+
+
+class ButtonWithText(Button):
+    def __init__(self, spriteGroup, colors, size, posCenter, textInfo):
+        super().__init__(spriteGroup, colors, size, posCenter)
+        self.textInfo = textInfo
+
+        self.draw()
+
+    def draw(self):
         draw_text(self.image, self.textInfo[0], self.textInfo[1], self.rect.width // 2, self.rect.height // 2 - self.textInfo[1] // 4, self.textInfo[2])
+
+class ButtonWithArrow(Button):
+    def __init__(self, spriteGroup, colors, size, posCenter, arrowInfo):
+        super().__init__(spriteGroup, colors, size, posCenter)
+        self.arrowInfo = arrowInfo
+
+        self.draw()
+
+    def draw(self):
+        pygame.draw.polygon(self.image, *self.arrowInfo)
+
+
+
+
 
 
 def main():
