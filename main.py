@@ -1,6 +1,7 @@
 import pygame
 import os
 import sys
+import sqlite3
 
 
 WIDTH, HEIGHT = 600, 800
@@ -11,12 +12,6 @@ pygame.mixer.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('GalaxyShooter')
 clock = pygame.time.Clock()
-
-
-def terminate():
-    pygame.quit()
-    sys.exit()
-
 
 def load_image(name, color_key=None):
     fullname = os.path.join('data', 'images', name)
@@ -40,6 +35,19 @@ def load_sound(name):
     pass
 
 
+connection = sqlite3.connect(os.path.join('data', 'Config.db'))
+cursor = connection.cursor()
+
+nameOfBackgroundMenu = cursor.execute('SELECT Source FROM Sources WHERE Name = \'BackgroundMenu\'').fetchone()[0]
+BackgroundMenu = load_image(nameOfBackgroundMenu)
+
+
+def terminate():
+    pygame.quit()
+    connection.close()
+    sys.exit()
+
+
 def draw_text(screen, text, size, x, y, color):
     font = pygame.font.Font(None, size)
     string_rendered = font.render(text, 1, color)
@@ -49,7 +57,6 @@ def draw_text(screen, text, size, x, y, color):
 
 
 def screenIntro():
-    background = load_image('background_intro.png')
     color = pygame.Color('White')
     hsv = color.hsva
     color.hsva = (hsv[0], hsv[1], 0, hsv[3])
@@ -60,7 +67,7 @@ def screenIntro():
             if event.type == pygame.QUIT:
                 terminate()
 
-        screen.blit(background, (0, 0))
+        screen.fill(pygame.Color('Black'))
         draw_text(screen, 'GK', 50, WIDTH // 2, HEIGHT // 2 - 100, color)
         draw_text(screen, 'Production', 50, WIDTH // 2, HEIGHT // 2 - 50,
                   color)
@@ -81,7 +88,6 @@ def screenIntro():
 
 
 def screenMainmenu():
-    background = load_image('background_mainmenu.png')
     buttonFunctions = {1: screenChooseLevel, 2: screenСustomization}
     all_sprites = pygame.sprite.Group()
     buttonChooseLevel = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (300, 350), ('Выбрать уровень', 30, pygame.Color('White')))
@@ -100,7 +106,7 @@ def screenMainmenu():
                     pressedButton = 2
                     running = False
 
-        screen.blit(background, (0, 0))
+        screen.blit(BackgroundMenu, (0, 0))
 
         all_sprites.draw(screen)
         all_sprites.update()
@@ -113,17 +119,21 @@ def screenMainmenu():
 
 
 def screenChooseLevel():
-    background = load_image('background_mainmenu.png')
     all_sprites = pygame.sprite.Group()
 
     pass
 
 def screenСustomization():
-    background = load_image('background_mainmenu.png')
-    buttonFunctions = {1: print, 2: print}
+    numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
+    nameOfShip = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Ship\'').fetchone()[0]
+    nameOfShip = nameOfShip[:-4] + str(numberOfShip) + nameOfShip[-4:]
+    Ship = load_image(nameOfShip, -1)
+    bigShip = pygame.transform.scale(Ship, (Ship.get_width() * 2, Ship.get_height() * 2))
+
     all_sprites = pygame.sprite.Group()
-    buttonLeft = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (180, 350), (pygame.Color('White'), ((190, 10), (10, 50), (190, 90)), 0))
-    buttonRight = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (420, 350), (pygame.Color('White'), ((10, 10), (190, 50), (10, 90)), 0))
+    buttonLeft = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (180, 400), (pygame.Color('White'), ((190, 10), (10, 50), (190, 90)), 0))
+    buttonRight = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (420, 400), (pygame.Color('White'), ((10, 10), (190, 50), (10, 90)), 0))
+    bigShipRect = bigShip.get_rect(center=(300, 600))
 
     running = True
     while running:
@@ -131,14 +141,27 @@ def screenСustomization():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONUP:
+                change = False
                 if buttonLeft.isPressed():
-                    pressedButton = 1
-                    running = False
+                    numberOfShip = (numberOfShip + 12 - 1 - 1) % 12 + 1
+                    change = True
                 elif buttonRight.isPressed():
-                    pressedButton = 2
-                    running = False
+                    numberOfShip = (numberOfShip + 12 - 1 + 1) % 12 + 1
+                    change = True
+                if change:
+                    cursor.execute(f'UPDATE UserData SET Value = {numberOfShip} WHERE Information = \'numberOfShip\'')
+                    connection.commit()
 
-        screen.blit(background, (0, 0))
+                    nameOfShip = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Ship\'').fetchone()[0]
+                    nameOfShip = nameOfShip[:-4] + str(numberOfShip) + nameOfShip[-4:]
+                    Ship = load_image(nameOfShip, -1)
+                    bigShip = pygame.transform.scale(Ship, (Ship.get_width() * 2, Ship.get_height() * 2))
+
+
+        screen.blit(BackgroundMenu, (0, 0))
+        screen.blit(bigShip, bigShipRect)
+
+        draw_text(screen, 'Выберите звездолёт', 50, 300, 200, pygame.Color('White'))
 
         all_sprites.draw(screen)
         all_sprites.update()
@@ -146,13 +169,6 @@ def screenСustomization():
         pygame.display.flip()
 
         clock.tick(FPS)
-
-    buttonFunctions[pressedButton](123)
-
-
-
-
-
 
 
 class Button(pygame.sprite.Sprite):
@@ -179,7 +195,6 @@ class Button(pygame.sprite.Sprite):
         self.draw()
 
 
-
 class ButtonWithText(Button):
     def __init__(self, spriteGroup, colors, size, posCenter, textInfo):
         super().__init__(spriteGroup, colors, size, posCenter)
@@ -199,10 +214,6 @@ class ButtonWithArrow(Button):
 
     def draw(self):
         pygame.draw.polygon(self.image, *self.arrowInfo)
-
-
-
-
 
 
 def main():
