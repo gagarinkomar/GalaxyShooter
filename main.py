@@ -34,6 +34,14 @@ def load_sound(name):
     fullname = os.path.join('data', 'sounds', name)
     pass
 
+def load_ship():
+    numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
+    nameOfShip = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Ship\'').fetchone()[0]
+    nameOfShip = nameOfShip[:-4] + str(numberOfShip) + nameOfShip[-4:]
+    Ship = load_image(nameOfShip, -1)
+    bigShip = pygame.transform.scale(Ship, (Ship.get_width() * 2, Ship.get_height() * 2))
+    return Ship, bigShip
+
 
 connection = sqlite3.connect(os.path.join('data', 'Config.db'))
 cursor = connection.cursor()
@@ -124,15 +132,12 @@ def screenChooseLevel():
     pass
 
 def screenСustomization():
-    numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
-    nameOfShip = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Ship\'').fetchone()[0]
-    nameOfShip = nameOfShip[:-4] + str(numberOfShip) + nameOfShip[-4:]
-    Ship = load_image(nameOfShip, -1)
-    bigShip = pygame.transform.scale(Ship, (Ship.get_width() * 2, Ship.get_height() * 2))
+    bigShip = load_ship()[1]
 
     all_sprites = pygame.sprite.Group()
-    buttonLeft = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (180, 400), (pygame.Color('White'), ((190, 10), (10, 50), (190, 90)), 0))
-    buttonRight = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (420, 400), (pygame.Color('White'), ((10, 10), (190, 50), (10, 90)), 0))
+    buttonLeft = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA'), pygame.Color('White')), (200, 100), (180, 400), (((90, 10), (10, 50), (90, 90)), 0), ((90, 35, 80, 30), 0))
+    buttonRight = ButtonWithArrow(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA'), pygame.Color('White')), (200, 100), (420, 400), (((110, 10), (190, 50), (110, 90)), 0), ((30, 35, 80, 30), 0))
+    buttonReturn = ButtonWithArrow(all_sprites, (pygame.Color('Black'), pygame.Color('Grey'), pygame.Color('Red')), (100, 100), (540, 740), (((90, 10), (10, 50), (90, 90)), 0), None)
     bigShipRect = bigShip.get_rect(center=(300, 600))
 
     running = True
@@ -142,22 +147,19 @@ def screenСustomization():
                 terminate()
             elif event.type == pygame.MOUSEBUTTONUP:
                 change = False
+                numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
                 if buttonLeft.isPressed():
                     numberOfShip = (numberOfShip + 12 - 1 - 1) % 12 + 1
                     change = True
                 elif buttonRight.isPressed():
                     numberOfShip = (numberOfShip + 12 - 1 + 1) % 12 + 1
                     change = True
+                elif buttonReturn.isPressed():
+                    running = False
                 if change:
                     cursor.execute(f'UPDATE UserData SET Value = {numberOfShip} WHERE Information = \'numberOfShip\'')
                     connection.commit()
-
-                    nameOfShip = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Ship\'').fetchone()[0]
-                    nameOfShip = nameOfShip[:-4] + str(numberOfShip) + nameOfShip[-4:]
-                    Ship = load_image(nameOfShip, -1)
-                    bigShip = pygame.transform.scale(Ship, (Ship.get_width() * 2, Ship.get_height() * 2))
-
-
+                    bigShip = load_ship()[1]
         screen.blit(BackgroundMenu, (0, 0))
         screen.blit(bigShip, bigShipRect)
 
@@ -169,6 +171,8 @@ def screenСustomization():
         pygame.display.flip()
 
         clock.tick(FPS)
+
+    screenMainmenu()
 
 
 class Button(pygame.sprite.Sprite):
@@ -206,14 +210,18 @@ class ButtonWithText(Button):
         draw_text(self.image, self.textInfo[0], self.textInfo[1], self.rect.width // 2, self.rect.height // 2 - self.textInfo[1] // 4, self.textInfo[2])
 
 class ButtonWithArrow(Button):
-    def __init__(self, spriteGroup, colors, size, posCenter, arrowInfo):
+    def __init__(self, spriteGroup, colors, size, posCenter, polygonInfo, rectInfo):
         super().__init__(spriteGroup, colors, size, posCenter)
-        self.arrowInfo = arrowInfo
+        self.polygonInfo = polygonInfo
+        self.rectInfo = rectInfo
 
         self.draw()
 
     def draw(self):
-        pygame.draw.polygon(self.image, *self.arrowInfo)
+        if self.polygonInfo:
+            pygame.draw.polygon(self.image, self.colors[2], *self.polygonInfo)
+        if self.rectInfo:
+            pygame.draw.rect(self.image, self.colors[2],  *self.rectInfo)
 
 
 def main():
