@@ -2,6 +2,7 @@ import pygame
 import os
 import sys
 import sqlite3
+from random import random, randint, choice
 
 
 WIDTH, HEIGHT = 600, 800
@@ -48,6 +49,24 @@ cursor = connection.cursor()
 
 nameOfBackgroundMenu = cursor.execute('SELECT Source FROM Sources WHERE Name = \'BackgroundMenu\'').fetchone()[0]
 BackgroundMenu = load_image(nameOfBackgroundMenu)
+nameOfBackgroundGame = cursor.execute('SELECT Source FROM Sources WHERE Name = \'BackgroundGame\'').fetchone()[0]
+BackgroundGame = load_image(nameOfBackgroundGame)
+nameOfMeteor1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Meteor1\'').fetchone()[0]
+Meteor1 = load_image(nameOfMeteor1, -1)
+nameOfMeteor2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Meteor2\'').fetchone()[0]
+Meteor2 = load_image(nameOfMeteor2, -1)
+nameOfspaceAstronaut1_1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut1_1\'').fetchone()[0]
+spaceAstronaut1_1 = load_image(nameOfspaceAstronaut1_1, -1)
+nameOfspaceAstronaut1_2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut1_2\'').fetchone()[0]
+spaceAstronaut1_2 = load_image(nameOfspaceAstronaut1_2, -1)
+nameOfspaceAstronaut2_1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut2_1\'').fetchone()[0]
+spaceAstronaut2_1 = load_image(nameOfspaceAstronaut2_1, -1)
+nameOfspaceAstronaut2_2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut2_2\'').fetchone()[0]
+spaceAstronaut2_2 = load_image(nameOfspaceAstronaut2_2, -1)
+nameOfspaceSatellite1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceSatellite1\'').fetchone()[0]
+spaceSatellite1 = pygame.transform.scale(load_image(nameOfspaceSatellite1, -1), (110, 44))
+nameOfspaceSatellite2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceSatellite2\'').fetchone()[0]
+spaceSatellite2 = pygame.transform.scale(load_image(nameOfspaceSatellite2, -1), (110, 44))
 
 
 def terminate():
@@ -128,8 +147,152 @@ def screenMainmenu():
 
 def screenChooseLevel():
     all_sprites = pygame.sprite.Group()
+    buttonLevel1 = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 50), (300, 350), ('Уровень 1', 30, pygame.Color('White')))
+    buttonLevel2 = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 50), (300, 410), ('Уровень 2', 30, pygame.Color('White')))
+    buttonLevel3 = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 50), (300, 470), ('Уровень 3', 30, pygame.Color('White')))
+    buttonLevel4 = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 50), (300, 530), ('Уровень 4', 30, pygame.Color('White')))
 
-    pass
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if buttonLevel1.isPressed():
+                    screenGame(123)
+                elif buttonLevel2.isPressed():
+                    pass
+                elif buttonLevel3.isPressed():
+                    pass
+                elif buttonLevel4.isPressed():
+                    pass
+
+        screen.blit(BackgroundMenu, (0, 0))
+
+        draw_text(screen, 'Выберите уровень', 50, 300, 200, pygame.Color('White'))
+
+        all_sprites.draw(screen)
+        all_sprites.update()
+
+        pygame.display.flip()
+
+        clock.tick(FPS)
+
+def screenGame(level):
+    all_sprites = pygame.sprite.Group()
+    background_sprites = pygame.sprite.Group()
+    Background(all_sprites, background_sprites, isFirst=True)
+    Background(all_sprites, background_sprites)
+
+    lastMeteor = 0
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONUP:
+                pass
+
+        all_sprites.draw(screen)
+        all_sprites.update()
+
+        if random() * 1000 > 995 and pygame.time.get_ticks() - lastMeteor > 5000:
+            lastMeteor = pygame.time.get_ticks()
+            if random() * 100 > 50:
+                MeteorWithAstronaut(all_sprites)
+            else:
+                Satellite(all_sprites)
+
+        if len(background_sprites) == 1:
+            Background(all_sprites, background_sprites)
+
+        pygame.display.flip()
+
+        clock.tick(FPS)
+
+
+class Background(pygame.sprite.Sprite):
+    def __init__(self, *spriteGroups, isFirst=False):
+        super().__init__(*spriteGroups)
+
+        self.image = BackgroundGame
+        self.rect = self.image.get_rect()
+        self.rect.centerx = WIDTH // 2
+        if isFirst:
+            self.rect.bottom = HEIGHT
+        else:
+            self.rect.bottom = HEIGHT - self.image.get_rect().height
+
+    def update(self):
+        self.rect = self.rect.move(0, 2)
+        if self.rect.y > HEIGHT:
+            self.kill()
+
+
+class MeteorWithAstronaut(pygame.sprite.Sprite):
+    def __init__(self, *spriteGroups):
+        super().__init__(*spriteGroups)
+
+        self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
+        self.imageMeteor = choice((Meteor1, Meteor2))
+        numberOfAstronaut = choice((1, 2))
+        self.isMirrored = False
+        if random() * 100 > 50:
+            self.isMirrored = True
+            if numberOfAstronaut == 1:
+                self.imagesAstronaut = [pygame.transform.flip(spaceAstronaut1_1, True, False), pygame.transform.flip(spaceAstronaut1_2, True, False)]
+            else:
+                self.imagesAstronaut = [pygame.transform.flip(spaceAstronaut2_1, True, False), pygame.transform.flip(spaceAstronaut2_2, True, False)]
+        else:
+            if numberOfAstronaut == 1:
+                self.imagesAstronaut = [spaceAstronaut1_1, spaceAstronaut1_2]
+            else:
+                self.imagesAstronaut = [spaceAstronaut2_1, spaceAstronaut2_2]
+        self.rect = self.image.get_rect().move(randint(50, WIDTH - 50), -100)
+        self.imageAstronaut = self.imagesAstronaut[1]
+
+        astronautRect = self.imageAstronaut.get_rect()
+        astronautRect.center = self.image.get_rect().center
+        if self.isMirrored:
+            self.limit = astronautRect.right
+        else:
+            self.limit = astronautRect.left
+        self.image.blit(self.imageMeteor, (0, 0))
+        self.image.blit(self.imageAstronaut, astronautRect)
+        self.lastUpdate = pygame.time.get_ticks()
+
+    def update(self):
+        self.rect = self.rect.move(0, 2)
+        if self.rect.y > HEIGHT:
+            self.kill()
+
+        if pygame.time.get_ticks() - self.lastUpdate > 1000:
+            self.lastUpdate = pygame.time.get_ticks()
+            self.imageAstronaut = list(set(self.imagesAstronaut) - {self.imageAstronaut})[0]
+        self.image.blit(self.imageMeteor, (0, 0))
+        astronautRect = self.imageAstronaut.get_rect()
+        astronautRect.centery = self.image.get_rect().centery
+        if self.isMirrored:
+            astronautRect.right = self.limit
+        else:
+            astronautRect.left = self.limit
+        self.image.blit(self.imageAstronaut, astronautRect)
+
+
+class Satellite(pygame.sprite.Sprite):
+    def __init__(self, *spriteGroups):
+        super().__init__(*spriteGroups)
+
+        self.image = choice((spaceSatellite1, spaceSatellite2))
+        self.rect = self.image.get_rect().move(randint(50, WIDTH - 50), -100)
+
+    def update(self):
+        self.rect = self.rect.move(0, 2)
+        if self.rect.y > HEIGHT:
+            self.kill()
+
+
+
 
 def screenСustomization():
     bigShip = load_ship()[1]
