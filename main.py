@@ -212,9 +212,9 @@ def screenGame(level):
         if random() * 1000 > 995 and pygame.time.get_ticks() - lastMeteor > 5000:
             lastMeteor = pygame.time.get_ticks()
             if random() * 100 > 50:
-                MeteorWithAstronaut(all_sprites, background2_sprites, posX=randint(-200 + camera.dx + 50, 800 + camera.dx - 50))
+                MeteorWithAstronaut(all_sprites, background2_sprites, posCenterX=randint(-200 + camera.dx + 50, 800 + camera.dx - 50))
             else:
-                Satellite(all_sprites, background2_sprites, posX=randint(-200 + camera.dx + 50, 800 + camera.dx - 50))
+                Satellite(all_sprites, background2_sprites, posCenterX=randint(-200 + camera.dx + 50, 800 + camera.dx - 50))
 
         if len(background1_sprites) == 1:
             Background(all_sprites, background1_sprites)
@@ -227,7 +227,7 @@ def screenGame(level):
 class Background(pygame.sprite.Sprite):
     def __init__(self, *spriteGroups, isFirst=False):
         super().__init__(*spriteGroups)
-        self.posX = -200
+        self.posX = WIDTH // 2 - BackgroundGame.get_rect().w // 2
 
         self.image = BackgroundGame
         self.rect = self.image.get_rect()
@@ -276,6 +276,11 @@ class Camera:
     def update(self, target):
         if not self.tryCameraMoving(target):
             target.rect.x += target.movingX
+        target.rect.y += target.movingY
+        target.rect.centerx = max(50, target.rect.centerx)
+        target.rect.centerx = min(WIDTH - 50, target.rect.centerx)
+        target.rect.centery = max(50, target.rect.centery)
+        target.rect.centery = min(HEIGHT - 50, target.rect.centery)
 
 
 class Player(pygame.sprite.Sprite):
@@ -297,12 +302,15 @@ class Player(pygame.sprite.Sprite):
             self.movingX = -10
         if keystate[pygame.K_d]:
             self.movingX = 10
+        if keystate[pygame.K_w]:
+            self.movingY = -10
+        if keystate[pygame.K_s]:
+            self.movingY = 10
 
 
 class MeteorWithAstronaut(pygame.sprite.Sprite):
-    def __init__(self, *spriteGroups, posX):
+    def __init__(self, *spriteGroups, posCenterX):
         super().__init__(*spriteGroups)
-        self.posX = posX
 
         self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
         self.imageMeteor = choice((Meteor1, Meteor2))
@@ -319,7 +327,9 @@ class MeteorWithAstronaut(pygame.sprite.Sprite):
                 self.imagesAstronaut = [spaceAstronaut1_1, spaceAstronaut1_2]
             else:
                 self.imagesAstronaut = [spaceAstronaut2_1, spaceAstronaut2_2]
-        self.rect = self.image.get_rect().move(posX, -100)
+        self.rect = self.image.get_rect().move(0, -100)
+        self.rect.centerx = posCenterX
+        self.posX = self.rect.x
         self.imageAstronaut = self.imagesAstronaut[1]
 
         astronautRect = self.imageAstronaut.get_rect()
@@ -351,12 +361,12 @@ class MeteorWithAstronaut(pygame.sprite.Sprite):
 
 
 class Satellite(pygame.sprite.Sprite):
-    def __init__(self, *spriteGroups, posX):
+    def __init__(self, *spriteGroups, posCenterX):
         super().__init__(*spriteGroups)
-        self.posX = posX
 
         self.image = choice((spaceSatellite1, spaceSatellite2))
-        self.rect = self.image.get_rect().move(posX, 100)
+        self.rect = self.image.get_rect().move(0, 100)
+        self.posX = self.rect.x
 
     def update(self):
         self.rect.y += 2
