@@ -3,6 +3,7 @@ import os
 import sys
 import sqlite3
 from random import random, randint, choice
+import copy
 
 
 WIDTH, HEIGHT = 600, 800
@@ -13,6 +14,8 @@ pygame.mixer.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('GalaxyShooter')
 clock = pygame.time.Clock()
+connection = sqlite3.connect(os.path.join('data', 'Config.db'))
+cursor = connection.cursor()
 
 def load_image(name, color_key=None):
     fullname = os.path.join('data', 'images', name)
@@ -44,29 +47,54 @@ def load_ship():
     return Ship, bigShip
 
 
-connection = sqlite3.connect(os.path.join('data', 'Config.db'))
-cursor = connection.cursor()
+def load_graphics():
+    nameOfBackgroundMenu = cursor.execute('SELECT Source FROM Sources WHERE Name = \'BackgroundMenu\'').fetchone()[0]
+    BackgroundMenu = load_image(nameOfBackgroundMenu)
+    nameOfBackgroundGame = cursor.execute('SELECT Source FROM Sources WHERE Name = \'BackgroundGame\'').fetchone()[0]
+    BackgroundGame = load_image(nameOfBackgroundGame)
+    nameOfMeteor1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Meteor1\'').fetchone()[0]
+    Meteor1 = load_image(nameOfMeteor1, -1)
+    nameOfMeteor2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Meteor2\'').fetchone()[0]
+    Meteor2 = load_image(nameOfMeteor2, -1)
+    nameOfspaceAstronaut1_1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut1_1\'').fetchone()[0]
+    spaceAstronaut1_1 = load_image(nameOfspaceAstronaut1_1, -1)
+    nameOfspaceAstronaut1_2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut1_2\'').fetchone()[0]
+    spaceAstronaut1_2 = load_image(nameOfspaceAstronaut1_2, -1)
+    nameOfspaceAstronaut2_1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut2_1\'').fetchone()[0]
+    spaceAstronaut2_1 = load_image(nameOfspaceAstronaut2_1, -1)
+    nameOfspaceAstronaut2_2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut2_2\'').fetchone()[0]
+    spaceAstronaut2_2 = load_image(nameOfspaceAstronaut2_2, -1)
+    nameOfspaceSatellite1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceSatellite1\'').fetchone()[0]
+    spaceSatellite1 = pygame.transform.scale(load_image(nameOfspaceSatellite1, -1), (110, 44))
+    nameOfspaceSatellite2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceSatellite2\'').fetchone()[0]
+    spaceSatellite2 = pygame.transform.scale(load_image(nameOfspaceSatellite2, -1), (110, 44))
+    # Выше потом тоже сделаю через цикл
+    enemys = []
+    for i in range(1, 7):
+        nameOfEnemy = cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'Enemy{i}\'').fetchone()[0]
+        enemy = load_image(nameOfEnemy, -1)
+        enemy = pygame.transform.scale(enemy, (int(enemy.get_rect().w // 1.25), int(enemy.get_rect().h // 1.25)))
+        enemys.append(enemy)
+    Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6 = enemys
+    lasers = []
+    for i in range(1, 4):
+        for laserType in(['laserBig', 'laserMedium', 'laserSmall']):
+            nameOflaser = cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'{laserType}{i}\'').fetchone()[0]
+            laser = load_image(nameOflaser, -1)
+            lasers.append(laser)
+    laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3 = lasers
+    return BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3
 
-nameOfBackgroundMenu = cursor.execute('SELECT Source FROM Sources WHERE Name = \'BackgroundMenu\'').fetchone()[0]
-BackgroundMenu = load_image(nameOfBackgroundMenu)
-nameOfBackgroundGame = cursor.execute('SELECT Source FROM Sources WHERE Name = \'BackgroundGame\'').fetchone()[0]
-BackgroundGame = load_image(nameOfBackgroundGame)
-nameOfMeteor1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Meteor1\'').fetchone()[0]
-Meteor1 = load_image(nameOfMeteor1, -1)
-nameOfMeteor2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Meteor2\'').fetchone()[0]
-Meteor2 = load_image(nameOfMeteor2, -1)
-nameOfspaceAstronaut1_1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut1_1\'').fetchone()[0]
-spaceAstronaut1_1 = load_image(nameOfspaceAstronaut1_1, -1)
-nameOfspaceAstronaut1_2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut1_2\'').fetchone()[0]
-spaceAstronaut1_2 = load_image(nameOfspaceAstronaut1_2, -1)
-nameOfspaceAstronaut2_1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut2_1\'').fetchone()[0]
-spaceAstronaut2_1 = load_image(nameOfspaceAstronaut2_1, -1)
-nameOfspaceAstronaut2_2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceAstronaut2_2\'').fetchone()[0]
-spaceAstronaut2_2 = load_image(nameOfspaceAstronaut2_2, -1)
-nameOfspaceSatellite1 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceSatellite1\'').fetchone()[0]
-spaceSatellite1 = pygame.transform.scale(load_image(nameOfspaceSatellite1, -1), (110, 44))
-nameOfspaceSatellite2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceSatellite2\'').fetchone()[0]
-spaceSatellite2 = pygame.transform.scale(load_image(nameOfspaceSatellite2, -1), (110, 44))
+
+def load_enemySettings():
+    settingsEnemy = []
+    complexity = cursor.execute('SELECT Value FROM UserData WHERE Information = \'complexity\'').fetchone()[0]
+    for i in range(1, 7):
+        settingEnemy = cursor.execute(f'SELECT nowSettings FROM enemySettings WHERE Name = \'Enemy{i}\'').fetchone()[0].split(', ')
+        settingEnemy = list(map(int, settingEnemy[:-1])) + [settingEnemy[-1]]
+        settingEnemy = [settingEnemy[0] * (1 + 0.2 * complexity)] + [settingEnemy[1] * (1 + 0.2 * complexity)] + settingEnemy[2:]
+        settingsEnemy.append(settingEnemy)
+    return settingsEnemy
 
 
 def terminate():
@@ -112,10 +140,10 @@ def screenIntro():
         pygame.display.flip()
 
         clock.tick(20)
+    return 'Exit2'
 
 
 def screenMainmenu():
-    buttonFunctions = {1: screenChooseLevel, 2: screenСustomization}
     all_sprites = pygame.sprite.Group()
     buttonChooseLevel = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (300, 350), ('Выбрать уровень', 30, pygame.Color('White')))
     buttonСustomization = ButtonWithText(all_sprites, (pygame.Color('#00BFFF'), pygame.Color('#87CEFA')), (200, 100), (300, 500), ('Кастомизация', 30, pygame.Color('White')))
@@ -127,11 +155,9 @@ def screenMainmenu():
                 terminate()
             elif event.type == pygame.MOUSEBUTTONUP:
                 if buttonChooseLevel.isPressed():
-                    pressedButton = 1
-                    running = False
+                    return 'Exit4'
                 elif buttonСustomization.isPressed():
-                    pressedButton = 2
-                    running = False
+                    return 'Exit3'
 
         screen.blit(BackgroundMenu, (0, 0))
 
@@ -141,8 +167,6 @@ def screenMainmenu():
         pygame.display.flip()
 
         clock.tick(FPS)
-
-    buttonFunctions[pressedButton]()
 
 
 def screenChooseLevel():
@@ -159,7 +183,7 @@ def screenChooseLevel():
                 terminate()
             elif event.type == pygame.MOUSEBUTTONUP:
                 if buttonLevel1.isPressed():
-                    screenGame(123)
+                    return ('Exit5', 123)
                 elif buttonLevel2.isPressed():
                     pass
                 elif buttonLevel3.isPressed():
@@ -179,6 +203,9 @@ def screenChooseLevel():
         clock.tick(FPS)
 
 def screenGame(level):
+    settingsEnemy1, settingsEnemy2, settingsEnemy3, settingsEnemy4, settingsEnemy5, settingsEnemy6 = load_enemySettings()
+    Ship = load_ship()[0]
+
     camera = Camera()
     all_sprites = pygame.sprite.Group()
     background1_sprites = pygame.sprite.Group()
@@ -187,7 +214,12 @@ def screenGame(level):
     game_sprites = pygame.sprite.Group()
     Background(all_sprites, background1_sprites, isFirst=True)
     Background(all_sprites, background1_sprites)
-    player = Player(player_sprite, centerX=WIDTH // 2, centerY=700)
+    player = Player(player_sprite, centerX=WIDTH // 2, centerY=700, image=Ship)
+
+    #тесты
+    Enemy(all_sprites, game_sprites, settings=settingsEnemy6, image=Enemy6, posCenterX=300)
+
+    #конец
 
     lastMeteor = 0
     running = True
@@ -222,6 +254,60 @@ def screenGame(level):
         pygame.display.flip()
 
         clock.tick(FPS)
+
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, *spriteGroups, settings, image, posCenterX):
+        super().__init__(*spriteGroups)
+
+        self.spriteGroups = spriteGroups
+        self.hp = settings[0]
+        self.damage = settings[1]
+        self.countGuns = settings[2]
+        self.speedShooting = settings[3]
+        self.movingX = settings[4]
+        self.movingY = settings[5]
+
+        if settings[6] == 'small':
+            self.imageLaser = choice([laserSmall1, laserSmall2, laserSmall3])
+        elif settings[6] == 'medium':
+            self.imageLaser = choice([laserMedium1, laserMedium2, laserMedium3])
+        else:
+            self.imageLaser = choice([laserBig1, laserBig2, laserBig3])
+
+        self.lastLaser = pygame.time.get_ticks()
+        self.image = image
+        self.rect = self.image.get_rect().move(0, -100)
+        self.rect.centerx = posCenterX
+        self.posX = self.rect.x
+
+    def update(self):
+        self.rect.x += self.movingX
+        self.rect.y += self.movingY
+
+        if pygame.time.get_ticks() - self.lastLaser > self.speedShooting:
+            self.lastLaser = pygame.time.get_ticks()
+            if self.countGuns == 1:
+                Laser(self, (self.rect.centerx, self.rect.bottom))
+            else:
+                Laser(self, (self.rect.x + self.rect.w // 3, self.rect.bottom))
+                Laser(self, (self.rect.x + self.rect.w // 3 * 2, self.rect.bottom))
+
+
+class Laser(pygame.sprite.Sprite):
+    def __init__(self, enemy, posCenter):
+        super().__init__(*enemy.groups())
+
+        self.damage = enemy.damage
+        self.movingY = 5
+        self.image = enemy.imageLaser
+        self.rect = self.image.get_rect()
+        self.rect.centerx = posCenter[0]
+        self.rect.centery = posCenter[1]
+        self.posX = self.rect.x
+
+    def update(self):
+        self.rect.y += self.movingY
 
 
 class Background(pygame.sprite.Sprite):
@@ -284,12 +370,12 @@ class Camera:
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, *spriteGroup, centerX, centerY):
+    def __init__(self, *spriteGroup, centerX, centerY, image):
         super().__init__(*spriteGroup)
         self.movingX = 0
         self.movingY = 0
 
-        self.image = load_ship()[0]
+        self.image = image
         self.rect = self.image.get_rect()
         self.rect.centerx = centerX
         self.rect.centery = centerY
@@ -374,8 +460,6 @@ class Satellite(pygame.sprite.Sprite):
             self.kill()
 
 
-
-
 def screenСustomization():
     bigShip = load_ship()[1]
 
@@ -400,7 +484,7 @@ def screenСustomization():
                     numberOfShip = (numberOfShip + 12 - 1 + 1) % 12 + 1
                     change = True
                 elif buttonReturn.isPressed():
-                    running = False
+                    return 'Exit2'
                 if change:
                     cursor.execute(f'UPDATE UserData SET Value = {numberOfShip} WHERE Information = \'numberOfShip\'')
                     connection.commit()
@@ -416,8 +500,6 @@ def screenСustomization():
         pygame.display.flip()
 
         clock.tick(FPS)
-
-    screenMainmenu()
 
 
 class Button(pygame.sprite.Sprite):
@@ -469,9 +551,14 @@ class ButtonWithArrow(Button):
             pygame.draw.rect(self.image, self.colors[2],  *self.rectInfo)
 
 
-def main():
-    #screenIntro()
-    screenMainmenu()
+if __name__ == '__main__':
+    BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3 = load_graphics()
 
-main()
-
+    resultDict = {'Exit1': screenIntro, 'Exit2': screenMainmenu, 'Exit3': screenСustomization, 'Exit4': screenChooseLevel, 'Exit5': screenGame}
+    result = ('Exit5', 123)
+    while result:
+        if type(result) is tuple:
+            result = resultDict[result[0]](result[1])
+        else:
+            result = resultDict[result]()
+    connection.close()
