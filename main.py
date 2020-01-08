@@ -281,8 +281,13 @@ class Enemy(pygame.sprite.Sprite):
         self.posX = self.rect.x
 
     def update(self):
-        self.rect.x += self.movingX
+        if (self.movingY < 0 and self.rect.centery + self.movingY < 50) or (self.movingY > 0 and self.rect.centery + self.movingY > HEIGHT // 2):
+            self.movingY = -self.movingY
         self.rect.y += self.movingY
+        if (self.posX + self.rect.w // 2 + self.movingX < WIDTH // 2 - BackgroundGame.get_rect().w // 2 + 50) or (self.posX + self.rect.w // 2 + self.movingX > WIDTH + BackgroundGame.get_rect().w // 2 - WIDTH // 2 - 50):
+            print(self.posX + self.rect.w // 2 + self.movingX,  WIDTH // 2 - BackgroundGame.get_rect().w // 2 + 50, self.posX + self.rect.w // 2 + self.movingX, BackgroundGame.get_rect().w // 2 - WIDTH // 2 - 50)
+            self.movingX = -self.movingX
+        self.posX += self.movingX
 
         if pygame.time.get_ticks() - self.lastLaser > self.speedShooting:
             self.lastLaser = pygame.time.get_ticks()
