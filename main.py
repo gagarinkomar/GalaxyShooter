@@ -3,7 +3,6 @@ import os
 import sys
 import sqlite3
 from random import random, randint, choice
-import copy
 
 
 WIDTH, HEIGHT = 600, 800
@@ -217,7 +216,7 @@ def screenGame(level):
     player = Player(player_sprite, centerX=WIDTH // 2, centerY=700, image=Ship)
 
     #тесты
-    Enemy(all_sprites, game_sprites, settings=settingsEnemy6, image=Enemy6, posCenterX=300)
+    Enemy(all_sprites, game_sprites, settings=settingsEnemy1, image=Enemy1, posCenterX=300)
 
     #конец
 
@@ -288,22 +287,22 @@ class Enemy(pygame.sprite.Sprite):
         if pygame.time.get_ticks() - self.lastLaser > self.speedShooting:
             self.lastLaser = pygame.time.get_ticks()
             if self.countGuns == 1:
-                Laser(self, (self.rect.centerx, self.rect.bottom))
+                Laser(self, self.rect.w // 2, self.rect.bottom)
             else:
-                Laser(self, (self.rect.x + self.rect.w // 3, self.rect.bottom))
-                Laser(self, (self.rect.x + self.rect.w // 3 * 2, self.rect.bottom))
+                Laser(self, self.rect.w // 3, self.rect.bottom)
+                Laser(self, self.rect.w // 3 * 2, self.rect.bottom)
 
 
 class Laser(pygame.sprite.Sprite):
-    def __init__(self, enemy, posCenter):
+    def __init__(self, enemy, posShiftX, posCenterY):
         super().__init__(*enemy.groups())
 
         self.damage = enemy.damage
         self.movingY = 5
         self.image = enemy.imageLaser
         self.rect = self.image.get_rect()
-        self.rect.centerx = posCenter[0]
-        self.rect.centery = posCenter[1]
+        self.rect.centerx = enemy.posX + posShiftX
+        self.rect.centery = posCenterY
         self.posX = self.rect.x
 
     def update(self):
