@@ -86,15 +86,19 @@ def load_graphics():
             lasers.append(laser)
     laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3 = lasers
 
-    ExplosionList = []
+    regularExplosionList = []
+    sonicExplosionList = []
     for i in range(1, 10):
-        nameOfExplosion = cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'Explosion{i}\'').fetchone()[0]
-        explosion = load_image(nameOfExplosion, -1)
-        ExplosionList.append(explosion)
+        nameOfRegularExplosion = cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'regularExplosion{i}\'').fetchone()[0]
+        nameOfSonicExplosion = cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'sonicExplosion{i}\'').fetchone()[0]
+        regularExplosion = load_image(nameOfRegularExplosion, -1)
+        sonicExplosion = load_image(nameOfSonicExplosion, -1)
+        regularExplosionList.append(regularExplosion)
+        sonicExplosionList.append(sonicExplosion)
 
     nameOfHeart = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Heart\'').fetchone()[0]
     Heart = load_image(nameOfHeart, -1)
-    return BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3, ExplosionList, Heart
+    return BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3, regularExplosionList, sonicExplosionList, Heart
 
 
 def load_level(name):
@@ -254,7 +258,7 @@ def screenGame(level):
     player_sprite = pygame.sprite.Group()
     Background(all_sprites, background1_sprites, isFirst=True)
     Background(all_sprites, background1_sprites)
-    player = Player((player_sprite, game_sprites), (all_sprites, explosion_sprites), WIDTH // 2, 700, Ship, camera)
+    player = Player((player_sprite, game_sprites), (all_sprites, explosion_sprites), (game_sprites, ), WIDTH // 2, 700, Ship, camera)
 
     #тесты
 
@@ -274,14 +278,14 @@ def screenGame(level):
                 if type(sprite) != Player:
                     sprite.kill()
             projectile_sprites.empty()
-        if len(game_sprites) == 1 and pygame.time.get_ticks() - player.startHiding > 10000:
+        if len(game_sprites) == 1 and pygame.time.get_ticks() - player.startHiding > 5000:
             if numberOfWave == len(level):
                 pass  # game over +
                 return 'Exit4'
             if level[numberOfWave][0] == 'enemys':
                 for pos, enemy in enumerate(level[numberOfWave][1:]):
                     dataEnemy = {1: (settingsEnemy1, Enemy1), 2: (settingsEnemy2, Enemy2), 3: (settingsEnemy3, Enemy3), 4: (settingsEnemy4, Enemy4), 5: (settingsEnemy5, Enemy5), 6: (settingsEnemy6, Enemy6)}[enemy]
-                    Enemy((all_sprites, ), game_sprites, (all_sprites, projectile_sprites), settings=dataEnemy[0], image=dataEnemy[1], posCenter=(100 * (pos + 1), -HEIGHT + 100 * (pos + 1)))
+                    Enemy((all_sprites, ), (all_sprites, explosion_sprites), (game_sprites, ), (all_sprites, projectile_sprites), dataEnemy[0], dataEnemy[1], (100 * (pos + 1), -HEIGHT + 100 * (pos + 1)), camera)
             else:
                 pass #boss
             numberOfWave += 1
@@ -303,8 +307,14 @@ def screenGame(level):
             screen.blit(Heart, (WIDTH - (50 * i + Heart.get_rect().w // 2), 50 - Heart.get_rect().h // 2))
 
         all_sprites.update()
-        if player_sprite:
-            player_sprite.update()
+        player_sprite.update()
+
+        for sprite in game_sprites:
+            if pygame.sprite.collide_mask(player, sprite) and type(sprite) != Player:
+                player.hp -= 500
+                Explosion(sprite.explosionGroups, (sprite.rect.x - camera.dx + sprite.image.get_rect().w // 2, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
+                sprite.kill()
+
 
 
 
@@ -325,13 +335,13 @@ def screenGame(level):
 
 
 class Explosion(pygame.sprite.Sprite):
-    def __init__(self, spriteGroups, posCenter, size):
+    def __init__(self, spriteGroups, posCenter, size, ExplosionList):
         super().__init__(*spriteGroups)
 
+        self.ExplosionList = [pygame.transform.scale(explosion, (size, size),) for explosion in ExplosionList]
         self.posCenter = posCenter
-        self.size = size
         self.imageNumber = 1
-        self.image = ExplosionList[self.imageNumber - 1]
+        self.image = self.ExplosionList[self.imageNumber - 1]
         self.rect = self.image.get_rect()
         self.rect.center = self.posCenter
         self.posX = self.rect.x
@@ -341,10 +351,10 @@ class Explosion(pygame.sprite.Sprite):
         if pygame.time.get_ticks() - self.lastUpdate > 1000 / FPSEffect:
             self.lastUpdate = pygame.time.get_ticks()
             self.imageNumber += 1
-            if self.imageNumber == len(ExplosionList):
+            if self.imageNumber == len(self.ExplosionList):
                 self.kill()
             else:
-                self.image = ExplosionList[self.imageNumber - 1]
+                self.image = self.ExplosionList[self.imageNumber - 1]
                 self.rect = self.image.get_rect()
                 self.rect.center = self.posCenter
                 self.posX = self.rect.x
@@ -352,10 +362,12 @@ class Explosion(pygame.sprite.Sprite):
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, spriteGroups, gameGroup, projectileGroups, settings, image, posCenter):
-        super().__init__(*spriteGroups, gameGroup)
+    def __init__(self, spriteGroups, explosionGroups, gameGroups, projectileGroups, settings, image, posCenter, camera):
+        super().__init__(*spriteGroups, gameGroups)
 
-        self.gameGroup = gameGroup
+        self.camera = camera
+        self.explosionGroups = explosionGroups
+        self.gameGroups = gameGroups
         self.projectileGroups = projectileGroups
         self.hp = settings[0]
         self.damage = settings[1]
@@ -403,7 +415,9 @@ class Projectile(pygame.sprite.Sprite):
     def __init__(self, target, posShiftX, posCenterY):
         super().__init__(*target.projectileGroups)
 
-        self.gameGroup = target.gameGroup
+        self.camera = target.camera
+        self.explosionGroups = target.explosionGroups
+        self.gameGroups = target.gameGroups
         self.type = type(target)
         self.damage = target.damage
         self.movingY = 5
@@ -417,11 +431,13 @@ class Projectile(pygame.sprite.Sprite):
 
     def update(self):
         killany = False
-        for sprite in self.gameGroup:
-            if pygame.sprite.collide_mask(self, sprite) and self.type != type(sprite):
-                sprite.hp -= self.damage
-                killany = True
+        for group in self.gameGroups:
+            for sprite in group:
+                if pygame.sprite.collide_mask(self, sprite) and self.type != type(sprite):
+                    sprite.hp -= self.damage
+                    killany = True
         if killany:
+            Explosion(self.explosionGroups, (self.rect.x - self.camera.dx + self.image.get_rect().w // 2, self.rect.centery), round(max(self.rect.size) * 1.5), sonicExplosionList)
             self.kill()
 
         self.rect.y += self.movingY
@@ -489,10 +505,11 @@ class Camera:
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, spriteGroup, explosionGroups, centerX, centerY, image, camera):
+    def __init__(self, spriteGroup, explosionGroups, gameGroups, centerX, centerY, image, camera):
         super().__init__(*spriteGroup)
         self.explosionGroups = explosionGroups
         self.camera = camera
+        self.gameGroups = gameGroups
         self.movingX = 0
         self.movingY = 0
         self.hideTime = 0
@@ -501,11 +518,11 @@ class Player(pygame.sprite.Sprite):
         self.hp = 1000
 
         self.imageMain = image
-        self.image = self.imageMain
+        self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         self.rect.centerx = centerX
         self.rect.centery = centerY
-        self.mask = pygame.mask.from_surface(self.image)
+        self.mask = pygame.mask.from_surface(self.imageMain)
         self.lastUpdate = 0
 
     def update(self):
@@ -514,19 +531,21 @@ class Player(pygame.sprite.Sprite):
             self.startHiding = pygame.time.get_ticks()
             self.hideTime = 2000
             self.hp = 1000
-            Explosion(self.explosionGroups, (self.rect.x - self.camera.dx + self.image.get_rect().w // 2, self.rect.centery), round(self.rect.w * 1.5))
+            Explosion(self.explosionGroups, (self.rect.x - self.camera.dx + self.image.get_rect().w // 2, self.rect.centery), round(max(self.rect.size) * 1.5), regularExplosionList)
         self.movingX = 0
         self.movingY = 0
         if pygame.time.get_ticks() - self.startHiding <= self.hideTime:
             self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
-        elif pygame.time.get_ticks() - self.startHiding <= self.hideTime + 2500 and pygame.time.get_ticks() - self.lastUpdate > 1000 / FPSRecoveryPlayer:
-            self.lastUpdate = pygame.time.get_ticks()
-            if self.image == self.imageMain:
-                self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
-            else:
-                self.image = self.imageMain
-        elif pygame.time.get_ticks() - self.lastUpdate > 1000 / FPSRecoveryPlayer:
-            self.image = self.imageMain
+        else:
+            if pygame.time.get_ticks() - self.lastUpdate > 1000 / FPSRecoveryPlayer:
+                if pygame.time.get_ticks() - self.startHiding <= self.hideTime + 2500:
+                    self.lastUpdate = pygame.time.get_ticks()
+                    if self.image == self.imageMain:
+                        self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
+                    else:
+                        self.image = self.imageMain
+                else:
+                    self.image = self.imageMain
             keystate = pygame.key.get_pressed()
             if keystate[pygame.K_a]:
                 self.movingX = -10
@@ -698,12 +717,12 @@ class ButtonWithArrow(Button):
 
 if __name__ == '__main__':
     Level1, Level2, Level3, LevelCustom = load_levels()
-    BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3, ExplosionList, Heart = load_graphics()
+    BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3, regularExplosionList, sonicExplosionList, Heart = load_graphics()
 
     resultDict = {'Exit1': screenIntro, 'Exit2': screenMainmenu, 'Exit3': screenСustomization, 'Exit4': screenChooseLevel, 'Exit5': screenGame}
     result = ('Exit5', Level1)
     while result:
-        if type(result) is tuple:
+        if type(result) == tuple:
             result = resultDict[result[0]](result[1])
         else:
             result = resultDict[result]()
