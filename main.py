@@ -8,7 +8,7 @@ from random import random, randint, choice
 WIDTH, HEIGHT = 600, 800
 FPS = 60
 FPSEffect = 30
-FPSRecoveryPlayer = 2
+FPSSpawnPlayer = 3
 
 pygame.init()
 pygame.mixer.init()
@@ -258,7 +258,7 @@ def screenGame(level):
     player_sprite = pygame.sprite.Group()
     Background(all_sprites, background1_sprites, isFirst=True)
     Background(all_sprites, background1_sprites)
-    player = Player((player_sprite, game_sprites), (all_sprites, explosion_sprites), (game_sprites, ), WIDTH // 2, 700, Ship, camera)
+    player = Player((player_sprite, game_sprites), (all_sprites, projectile_sprites), (WIDTH // 2, 700), Ship, 1000, 3, 0, 0, 0, 1000, 1000, 1000)
 
     #тесты
 
@@ -269,26 +269,30 @@ def screenGame(level):
     lastMeteor = 0
     running = True
     while running:
-        if player.lives == 0 and pygame.time.get_ticks() - player.startHiding >= 1000:
-            pass  # game over -
-            return
-        if pygame.time.get_ticks() - player.startHiding <= player.hideTime and len(game_sprites) > 1:
+        if pygame.time.get_ticks() - player.died > player.hideTime + player.spawnTime + player.waitTime:
+            if player.lives == 0:
+                pass
+                return  #game over -
+            if len(game_sprites) == 1:
+                if numberOfWave == len(level):
+                    pass  # game over +
+                    return 'Exit4'
+                if level[numberOfWave][0] == 'enemys':
+                    for pos, enemy in enumerate(level[numberOfWave][1:]):
+                        dataEnemy = {1: (settingsEnemy1, Enemy1), 2: (settingsEnemy2, Enemy2), 3: (settingsEnemy3, Enemy3), 4: (settingsEnemy4, Enemy4), 5: (settingsEnemy5, Enemy5), 6: (settingsEnemy6, Enemy6)}[enemy]
+                        Enemy((all_sprites, game_sprites), (all_sprites, projectile_sprites), dataEnemy[0], (100 * (pos + 1), -HEIGHT + 100 * (pos + 1)), dataEnemy[1])
+                else:
+                    pass #boss
+                numberOfWave += 1
+        if pygame.time.get_ticks() - player.died <= player.hideTime + player.spawnTime + player.waitTime and len(game_sprites) > 1:
+            Explosion((all_sprites, explosion_sprites), (player.rect.centerx - camera.dx, player.rect.centery), round(max(player.rect.size) * 1.5), regularExplosionList)
             numberOfWave -= 1
             for sprite in game_sprites:
                 if type(sprite) != Player:
                     sprite.kill()
             projectile_sprites.empty()
-        if len(game_sprites) == 1 and pygame.time.get_ticks() - player.startHiding > 5000:
-            if numberOfWave == len(level):
-                pass  # game over +
-                return 'Exit4'
-            if level[numberOfWave][0] == 'enemys':
-                for pos, enemy in enumerate(level[numberOfWave][1:]):
-                    dataEnemy = {1: (settingsEnemy1, Enemy1), 2: (settingsEnemy2, Enemy2), 3: (settingsEnemy3, Enemy3), 4: (settingsEnemy4, Enemy4), 5: (settingsEnemy5, Enemy5), 6: (settingsEnemy6, Enemy6)}[enemy]
-                    Enemy((all_sprites, ), (all_sprites, explosion_sprites), (game_sprites, ), (all_sprites, projectile_sprites), dataEnemy[0], dataEnemy[1], (100 * (pos + 1), -HEIGHT + 100 * (pos + 1)), camera)
-            else:
-                pass #boss
-            numberOfWave += 1
+
+
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -306,14 +310,22 @@ def screenGame(level):
         for i in range(1, player.lives + 1):
             screen.blit(Heart, (WIDTH - (50 * i + Heart.get_rect().w // 2), 50 - Heart.get_rect().h // 2))
 
+
+        for sprite in game_sprites:
+            if pygame.sprite.collide_mask(player, sprite) and type(sprite) != Player:
+                player.hpnow -= 500
+                sprite.hpnow -= 500
+            for explosionSettings in sprite.checkDamage(projectile_sprites):
+                Explosion((all_sprites, explosion_sprites), (explosionSettings[0] - camera.dx, explosionSettings[1]), explosionSettings[2], sonicExplosionList)
+
         all_sprites.update()
         player_sprite.update()
 
         for sprite in game_sprites:
-            if pygame.sprite.collide_mask(player, sprite) and type(sprite) != Player:
-                player.hp -= 500
-                Explosion(sprite.explosionGroups, (sprite.rect.x - camera.dx + sprite.image.get_rect().w // 2, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
+            if sprite.lives == 0 and type(sprite) != Player:
+                Explosion((all_sprites, explosion_sprites), (sprite.rect.centerx - camera.dx, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
                 sprite.kill()
+
 
 
 
@@ -332,6 +344,107 @@ def screenGame(level):
         pygame.display.flip()
 
         clock.tick(FPS)
+
+
+class GameObject(pygame.sprite.Sprite):
+    def __init__(self, spriteGroups, projectileGroups, posCenter, image, hp, lives, damage, movingX, movingY):
+        super().__init__(*spriteGroups)
+        self.projectileGroups = projectileGroups
+        self.hp = hp
+        self.hpnow = self.hp
+        self.lives = lives
+        self.damage = damage
+        self.movingX = movingX
+        self.movingY = movingY
+
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.center = posCenter
+        self.mask = pygame.mask.from_surface(self.image)
+        self.posX = self.rect.x
+
+    def checkDamage(self, projectileSprites):
+        result = []
+        for sprite in projectileSprites:
+            if pygame.sprite.collide_mask(self,
+                                          sprite) and sprite.type != type(
+                    self):
+                result.append(sprite.damageSprite(self))
+        return result
+
+
+class Player(GameObject):
+    def __init__(self, spriteGroups, projectileGroups, posCenter, image, hp, lives, damage, movingX, movingY, hideTime, spawnTime, waitTime):
+        super().__init__(spriteGroups, projectileGroups, posCenter, image, hp, lives, damage, movingX, movingY)
+        self.images = (self.image, pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA))
+        self.numberImage = 0
+        self.hideTime = hideTime
+        self.spawnTime = spawnTime
+        self.waitTime = waitTime
+        self.died = pygame.time.get_ticks() - self.hideTime
+        self.lastChangeImage = pygame.time.get_ticks()
+
+    def update(self):
+        if self.hpnow <= 0:
+            self.lives -= 1
+            self.hpnow = self.hp
+            self.died = pygame.time.get_ticks()
+        self.movingX = 0
+        self.movingY = 0
+        if pygame.time.get_ticks() - self.died <= self.hideTime:
+            self.image = self.images[1]
+        else:
+            if pygame.time.get_ticks() - self.lastChangeImage > 1000 / FPSSpawnPlayer:
+                if pygame.time.get_ticks() - self.died <= self.hideTime + self.spawnTime:
+                    self.lastChangeImage = pygame.time.get_ticks()
+                    self.image = self.images[self.numberImage]
+                    self.numberImage = (self.numberImage + 1) % 2
+                else:
+                    self.image = self.images[0]
+            keystate = pygame.key.get_pressed()
+            if keystate[pygame.K_a]:
+                self.movingX = -10
+            if keystate[pygame.K_d]:
+                self.movingX = 10
+            if keystate[pygame.K_w]:
+                self.movingY = -10
+            if keystate[pygame.K_s]:
+                self.movingY = 10
+
+
+class Enemy(GameObject):
+    def __init__(self, spriteGroups, projectileGroups, settings, posCenter, image):
+        super().__init__(spriteGroups, projectileGroups, posCenter, image, settings[0], 1, settings[1], settings[4], settings[5])
+        self.countGuns = settings[2]
+        self.speedShooting = settings[3]
+
+        if settings[6] == 'small':
+            self.imageProjectile = choice([laserSmall1, laserSmall2, laserSmall3])
+        elif settings[6] == 'medium':
+            self.imageProjectile = choice([laserMedium1, laserMedium2, laserMedium3])
+        else:
+            self.imageProjectile = choice([laserBig1, laserBig2, laserBig3])
+
+        self.lastProjectile = pygame.time.get_ticks()
+
+    def update(self):
+        if self.hpnow <= 0:
+            self.lives -= 1
+            self.hpnow = self.hp
+        if (self.movingY < 0 and self.rect.centery + self.movingY < 50) or (self.movingY > 0 and self.rect.centery + self.movingY > HEIGHT // 2):
+            self.movingY = -self.movingY
+        self.rect.y += self.movingY
+        if (self.posX + self.rect.w // 2 + self.movingX < WIDTH // 2 - BackgroundGame.get_rect().w // 2 + 50) or (self.posX + self.rect.w // 2 + self.movingX > WIDTH + BackgroundGame.get_rect().w // 2 - WIDTH // 2 - 50):
+            self.movingX = -self.movingX
+        self.posX += self.movingX
+
+        if pygame.time.get_ticks() - self.lastProjectile > self.speedShooting:
+            self.lastProjectile = pygame.time.get_ticks()
+            if self.countGuns == 1:
+                Projectile(self, self.rect.w // 2, self.rect.bottom)
+            else:
+                Projectile(self, self.rect.w // 3, self.rect.bottom)
+                Projectile(self, self.rect.w // 3 * 2, self.rect.bottom)
 
 
 class Explosion(pygame.sprite.Sprite):
@@ -360,64 +473,10 @@ class Explosion(pygame.sprite.Sprite):
                 self.posX = self.rect.x
 
 
-
-class Enemy(pygame.sprite.Sprite):
-    def __init__(self, spriteGroups, explosionGroups, gameGroups, projectileGroups, settings, image, posCenter, camera):
-        super().__init__(*spriteGroups, gameGroups)
-
-        self.camera = camera
-        self.explosionGroups = explosionGroups
-        self.gameGroups = gameGroups
-        self.projectileGroups = projectileGroups
-        self.hp = settings[0]
-        self.damage = settings[1]
-        self.countGuns = settings[2]
-        self.speedShooting = settings[3]
-        self.movingX = settings[4]
-        self.movingY = settings[5]
-
-        if settings[6] == 'small':
-            self.imageProjectile = choice([laserSmall1, laserSmall2, laserSmall3])
-        elif settings[6] == 'medium':
-            self.imageProjectile = choice([laserMedium1, laserMedium2, laserMedium3])
-        else:
-            self.imageProjectile = choice([laserBig1, laserBig2, laserBig3])
-
-        self.lastProjectile = pygame.time.get_ticks()
-        self.image = image
-        self.rect = self.image.get_rect().move(0, -100)
-        self.rect.center = posCenter
-        self.mask = pygame.mask.from_surface(self.image)
-        self.posX = self.rect.x
-
-    def update(self):
-        if self.hp <= 0:
-            self.kill()
-            return
-
-        if (self.movingY < 0 and self.rect.centery + self.movingY < 50) or (self.movingY > 0 and self.rect.centery + self.movingY > HEIGHT // 2):
-            self.movingY = -self.movingY
-        self.rect.y += self.movingY
-        if (self.posX + self.rect.w // 2 + self.movingX < WIDTH // 2 - BackgroundGame.get_rect().w // 2 + 50) or (self.posX + self.rect.w // 2 + self.movingX > WIDTH + BackgroundGame.get_rect().w // 2 - WIDTH // 2 - 50):
-            self.movingX = -self.movingX
-        self.posX += self.movingX
-
-        if pygame.time.get_ticks() - self.lastProjectile > self.speedShooting:
-            self.lastProjectile = pygame.time.get_ticks()
-            if self.countGuns == 1:
-                Projectile(self, self.rect.w // 2, self.rect.bottom)
-            else:
-                Projectile(self, self.rect.w // 3, self.rect.bottom)
-                Projectile(self, self.rect.w // 3 * 2, self.rect.bottom)
-
-
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, target, posShiftX, posCenterY):
         super().__init__(*target.projectileGroups)
 
-        self.camera = target.camera
-        self.explosionGroups = target.explosionGroups
-        self.gameGroups = target.gameGroups
         self.type = type(target)
         self.damage = target.damage
         self.movingY = 5
@@ -429,17 +488,13 @@ class Projectile(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.posX = self.rect.x
 
-    def update(self):
-        killany = False
-        for group in self.gameGroups:
-            for sprite in group:
-                if pygame.sprite.collide_mask(self, sprite) and self.type != type(sprite):
-                    sprite.hp -= self.damage
-                    killany = True
-        if killany:
-            Explosion(self.explosionGroups, (self.rect.x - self.camera.dx + self.image.get_rect().w // 2, self.rect.centery), round(max(self.rect.size) * 1.5), sonicExplosionList)
-            self.kill()
+    def damageSprite(self, sprite):
+        sprite.hpnow -= self.damage
+        self.kill()
+        return self.rect.center + (round(max(self.rect.size) * 1.5),)
 
+
+    def update(self):
         self.rect.y += self.movingY
         if self.rect.top >= HEIGHT:
             self.kill()
@@ -502,59 +557,6 @@ class Camera:
         target.rect.centerx = min(WIDTH - 50, target.rect.centerx)
         target.rect.centery = max(200, target.rect.centery)
         target.rect.centery = min(HEIGHT - 50, target.rect.centery)
-
-
-class Player(pygame.sprite.Sprite):
-    def __init__(self, spriteGroup, explosionGroups, gameGroups, centerX, centerY, image, camera):
-        super().__init__(*spriteGroup)
-        self.explosionGroups = explosionGroups
-        self.camera = camera
-        self.gameGroups = gameGroups
-        self.movingX = 0
-        self.movingY = 0
-        self.hideTime = 0
-        self.startHiding = 0
-        self.lives = 3
-        self.hp = 1000
-
-        self.imageMain = image
-        self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
-        self.rect = self.image.get_rect()
-        self.rect.centerx = centerX
-        self.rect.centery = centerY
-        self.mask = pygame.mask.from_surface(self.imageMain)
-        self.lastUpdate = 0
-
-    def update(self):
-        if self.hp <= 0:
-            self.lives -= 1
-            self.startHiding = pygame.time.get_ticks()
-            self.hideTime = 2000
-            self.hp = 1000
-            Explosion(self.explosionGroups, (self.rect.x - self.camera.dx + self.image.get_rect().w // 2, self.rect.centery), round(max(self.rect.size) * 1.5), regularExplosionList)
-        self.movingX = 0
-        self.movingY = 0
-        if pygame.time.get_ticks() - self.startHiding <= self.hideTime:
-            self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
-        else:
-            if pygame.time.get_ticks() - self.lastUpdate > 1000 / FPSRecoveryPlayer:
-                if pygame.time.get_ticks() - self.startHiding <= self.hideTime + 2500:
-                    self.lastUpdate = pygame.time.get_ticks()
-                    if self.image == self.imageMain:
-                        self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
-                    else:
-                        self.image = self.imageMain
-                else:
-                    self.image = self.imageMain
-            keystate = pygame.key.get_pressed()
-            if keystate[pygame.K_a]:
-                self.movingX = -10
-            if keystate[pygame.K_d]:
-                self.movingX = 10
-            if keystate[pygame.K_w]:
-                self.movingY = -10
-            if keystate[pygame.K_s]:
-                self.movingY = 10
 
 
 class MeteorWithAstronaut(pygame.sprite.Sprite):
