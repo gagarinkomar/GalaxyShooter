@@ -8,7 +8,7 @@ from random import random, randint, choice
 WIDTH, HEIGHT = 600, 800
 FPS = 60
 FPSEffect = 30
-FPSSpawnPlayer = 3
+FPSSpawnPlayer = 4
 
 pygame.init()
 pygame.mixer.init()
@@ -258,7 +258,8 @@ def screenGame(level):
     player_sprite = pygame.sprite.Group()
     Background(all_sprites, background1_sprites, isFirst=True)
     Background(all_sprites, background1_sprites)
-    player = Player((player_sprite, game_sprites), (all_sprites, projectile_sprites), (WIDTH // 2, 700), Ship, 1000, 3, 0, 0, 0, 1000, 1000, 1000)
+    player = Player((player_sprite, game_sprites), (all_sprites, projectile_sprites), (WIDTH // 2, 700), Ship, 1000, 3, 0, 0, 0, 2000, 2000, 3000)
+    eventStatus = EventStatus()
 
     #тесты
 
@@ -269,11 +270,11 @@ def screenGame(level):
     lastMeteor = 0
     running = True
     while running:
-        if pygame.time.get_ticks() - player.died > player.hideTime + player.spawnTime + player.waitTime:
-            if player.lives == 0:
+        if eventStatus.isWaiting():
+            if player.lives == 0 and eventStatus.checkTime(player.hideTime):
                 pass
-                return  #game over -
-            if len(game_sprites) == 1:
+                return  # game over -
+            elif len(game_sprites) == 1 and eventStatus.checkTime(player.hideTime + player.spawnTime + player.waitTime):
                 if numberOfWave == len(level):
                     pass  # game over +
                     return 'Exit4'
@@ -284,15 +285,6 @@ def screenGame(level):
                 else:
                     pass #boss
                 numberOfWave += 1
-        if pygame.time.get_ticks() - player.died <= player.hideTime + player.spawnTime + player.waitTime and len(game_sprites) > 1:
-            Explosion((all_sprites, explosion_sprites), (player.rect.centerx - camera.dx, player.rect.centery), round(max(player.rect.size) * 1.5), regularExplosionList)
-            numberOfWave -= 1
-            for sprite in game_sprites:
-                if type(sprite) != Player:
-                    sprite.kill()
-            projectile_sprites.empty()
-
-
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -321,8 +313,20 @@ def screenGame(level):
         all_sprites.update()
         player_sprite.update()
 
+        if len(game_sprites) == 1 and eventStatus.isPlaying():
+            eventStatus.changeEvent()
+
         for sprite in game_sprites:
-            if sprite.lives == 0 and type(sprite) != Player:
+            if type(sprite) == Player and sprite.isDied:
+                sprite.isDied = False
+                Explosion((all_sprites, explosion_sprites), (sprite.rect.centerx - camera.dx, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
+                numberOfWave -= 1
+                for sprite in game_sprites:
+                    if type(sprite) != Player:
+                        sprite.kill()
+                projectile_sprites.empty()
+                eventStatus.changeEvent()
+            elif sprite.lives == 0:
                 Explosion((all_sprites, explosion_sprites), (sprite.rect.centerx - camera.dx, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
                 sprite.kill()
 
@@ -344,6 +348,28 @@ def screenGame(level):
         pygame.display.flip()
 
         clock.tick(FPS)
+
+
+class EventStatus():
+    def __init__(self):
+        self.event = 'Waiting'
+        self.startEvent = pygame.time.get_ticks()
+
+    def isWaiting(self):
+        return self.event == 'Waiting'
+
+    def isPlaying(self):
+        return self.event == 'Playing'
+
+    def checkTime(self, time):
+        return pygame.time.get_ticks() - self.startEvent > time
+
+    def changeEvent(self):
+        if self.isWaiting():
+            self.event = 'Playing'
+        else:
+            self.event = 'Waiting'
+        self.startEvent = pygame.time.get_ticks()
 
 
 class GameObject(pygame.sprite.Sprite):
@@ -383,12 +409,14 @@ class Player(GameObject):
         self.waitTime = waitTime
         self.died = pygame.time.get_ticks() - self.hideTime
         self.lastChangeImage = pygame.time.get_ticks()
+        self.isDied = False
 
     def update(self):
         if self.hpnow <= 0:
             self.lives -= 1
             self.hpnow = self.hp
             self.died = pygame.time.get_ticks()
+            self.isDied = True
         self.movingX = 0
         self.movingY = 0
         if pygame.time.get_ticks() - self.died <= self.hideTime:
