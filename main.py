@@ -401,7 +401,7 @@ class GameObject(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = posCenter
         self.mask = pygame.mask.from_surface(self.image)
-        self.posX = self.rect.x
+        self.posCenterX = self.rect.centerx
 
     def checkDamage(self, projectileSprites):
         result = []
@@ -412,15 +412,9 @@ class GameObject(pygame.sprite.Sprite):
                 result.append(sprite.damageSprite(self))
         return result
 
-    def tryShoot(self):
+    def tryShoot(self, movingY, posCenterY):
         if pygame.time.get_ticks() - self.lastProjectile > self.speedShooting:
             self.lastProjectile = pygame.time.get_ticks()
-            if type(self) == Player:
-                movingY = -5
-                posCenterY = self.rect.top
-            else:
-                movingY = 5
-                posCenterY = self.rect.bottom
             if self.countGuns == 1:
                 Projectile(self, self.rect.w // 2, movingY, posCenterY)
             else:
@@ -469,7 +463,7 @@ class Player(GameObject):
             if keystate[pygame.K_s]:
                 self.movingY = 10
             if pygame.time.get_ticks() - self.died > self.hideTime + self.spawnTime:
-                self.tryShoot()
+                self.tryShoot(-5, self.rect.top)
 
 
 
@@ -491,10 +485,10 @@ class Enemy(GameObject):
         if (self.movingY < 0 and self.rect.centery + self.movingY < 50) or (self.movingY > 0 and self.rect.centery + self.movingY > HEIGHT // 2):
             self.movingY = -self.movingY
         self.rect.y += self.movingY
-        if (self.posX + self.rect.w // 2 + self.movingX < WIDTH // 2 - BackgroundGame.get_rect().w // 2 + 50) or (self.posX + self.rect.w // 2 + self.movingX > WIDTH + BackgroundGame.get_rect().w // 2 - WIDTH // 2 - 50):
+        if (self.posCenterX + self.movingX < WIDTH // 2 - BackgroundGame.get_rect().w // 2 + 50) or (self.posCenterX + self.movingX > WIDTH + BackgroundGame.get_rect().w // 2 - WIDTH // 2 - 50):
             self.movingX = -self.movingX
-        self.posX += self.movingX
-        self.tryShoot()
+        self.posCenterX += self.movingX
+        self.tryShoot(5, self.rect.bottom)
 
 
 class Explosion(pygame.sprite.Sprite):
@@ -507,7 +501,7 @@ class Explosion(pygame.sprite.Sprite):
         self.image = self.ExplosionList[self.imageNumber - 1]
         self.rect = self.image.get_rect()
         self.rect.center = self.posCenter
-        self.posX = self.rect.x
+        self.posCenterX = self.rect.centerx
         self.lastUpdate = pygame.time.get_ticks()
 
     def update(self):
@@ -520,7 +514,7 @@ class Explosion(pygame.sprite.Sprite):
                 self.image = self.ExplosionList[self.imageNumber - 1]
                 self.rect = self.image.get_rect()
                 self.rect.center = self.posCenter
-                self.posX = self.rect.x
+                self.posCenterX = self.rect.centerx
 
 
 class Projectile(pygame.sprite.Sprite):
@@ -533,31 +527,30 @@ class Projectile(pygame.sprite.Sprite):
         self.create = pygame.time.get_ticks()
         self.image = target.imageProjectile
         self.rect = self.image.get_rect()
-        self.rect.centerx = target.posX + posShiftX
+        self.rect.centerx = target.posCenterX - target.rect.w // 2 + posShiftX
         self.rect.centery = posCenterY
         self.mask = pygame.mask.from_surface(self.image)
-        self.posX = self.rect.x
+        self.posCenterX = self.rect.centerx
 
     def damageSprite(self, sprite):
         sprite.hpnow -= self.damage
         self.kill()
-        return self.rect.center + (round(max(self.rect.size) * 1.5),)
+        return self.rect.center + (round(max(self.rect.size) * 1.5), regularExplosionList if self.type == Player else sonicExplosionList)
 
 
     def update(self):
         self.rect.y += self.movingY
-        if self.rect.top >= HEIGHT:
+        if self.rect.top >= HEIGHT or self.rect.bottom <= 0:
             self.kill()
 
 
 class Background(pygame.sprite.Sprite):
     def __init__(self, *spriteGroups, isFirst=False):
         super().__init__(*spriteGroups)
-        self.posX = WIDTH // 2 - BackgroundGame.get_rect().w // 2
-
         self.image = BackgroundGame
         self.rect = self.image.get_rect()
         self.rect.centerx = WIDTH // 2
+        self.posCenterX = self.rect.centerx
         if isFirst:
             self.rect.bottom = HEIGHT
         else:
@@ -574,7 +567,7 @@ class Camera:
         self.dx = 0
 
     def apply(self, object):
-        object.rect.x = object.posX + self.dx
+        object.rect.centerx = object.posCenterX + self.dx
 
     def isCameraMoving(self, target):
         if target.movingX > 0:
@@ -602,7 +595,7 @@ class Camera:
     def update(self, target):
         if not self.tryCameraMoving(target):
             target.rect.x += target.movingX
-        target.posX = target.rect.x - self.dx
+        target.posCenterX = target.rect.centerx - self.dx
         target.rect.y += target.movingY
         target.rect.centerx = max(50, target.rect.centerx)
         target.rect.centerx = min(WIDTH - 50, target.rect.centerx)
@@ -631,7 +624,7 @@ class MeteorWithAstronaut(pygame.sprite.Sprite):
                 self.imagesAstronaut = [spaceAstronaut2_1, spaceAstronaut2_2]
         self.rect = self.image.get_rect().move(0, -100)
         self.rect.centerx = posCenterX
-        self.posX = self.rect.x
+        self.posCenterX = self.rect.centerx
         self.imageAstronaut = self.imagesAstronaut[1]
 
         astronautRect = self.imageAstronaut.get_rect()
@@ -669,7 +662,7 @@ class Satellite(pygame.sprite.Sprite):
 
         self.image = choice((spaceSatellite1, spaceSatellite2))
         self.rect = self.image.get_rect().move(0, 100)
-        self.posX = self.rect.x
+        self.posCenterX = self.rect.centerx
 
     def update(self):
         self.rect.y += 2
