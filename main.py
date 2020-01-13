@@ -259,7 +259,7 @@ def screenGame(level):
     Background(all_sprites, background1_sprites, isFirst=True)
     Background(all_sprites, background1_sprites)
     player = Player((player_sprite, game_sprites), (all_sprites, projectile_sprites), (WIDTH // 2, 700), Ship, 1000, 3, 0, 0, 0, 2000, 2000, 3000)
-    eventStatus = EventStatus()
+    eventStatus = EventStatus([player.hideTime, player.spawnTime, player.waitTime, 0], 1)
 
     #тесты
 
@@ -270,21 +270,23 @@ def screenGame(level):
     lastMeteor = 0
     running = True
     while running:
-        if eventStatus.isWaiting():
-            if player.lives == 0 and eventStatus.checkTime(player.hideTime):
-                pass
-                return  # game over -
-            elif len(game_sprites) == 1 and eventStatus.checkTime(player.hideTime + player.spawnTime + player.waitTime):
-                if numberOfWave == len(level):
-                    pass  # game over +
-                    return 'Exit4'
-                if level[numberOfWave][0] == 'enemys':
-                    for pos, enemy in enumerate(level[numberOfWave][1:]):
-                        dataEnemy = {1: (settingsEnemy1, Enemy1), 2: (settingsEnemy2, Enemy2), 3: (settingsEnemy3, Enemy3), 4: (settingsEnemy4, Enemy4), 5: (settingsEnemy5, Enemy5), 6: (settingsEnemy6, Enemy6)}[enemy]
-                        Enemy((all_sprites, game_sprites), (all_sprites, projectile_sprites), dataEnemy[0], (100 * (pos + 1), -HEIGHT + 100 * (pos + 1)), dataEnemy[1])
-                else:
-                    pass #boss
-                numberOfWave += 1
+        eventStatus.update()
+        print(player.lives)
+        print(eventStatus.events[eventStatus.event])
+        if player.lives == 0 and eventStatus.isSpawning():
+            pass
+            return  # game over -
+        elif len(game_sprites) == 1 and eventStatus.isPlaying():
+            if numberOfWave == len(level):
+                pass  # game over +
+                return 'Exit4'
+            if level[numberOfWave][0] == 'enemys':
+                for pos, enemy in enumerate(level[numberOfWave][1:]):
+                    dataEnemy = {1: (settingsEnemy1, Enemy1), 2: (settingsEnemy2, Enemy2), 3: (settingsEnemy3, Enemy3), 4: (settingsEnemy4, Enemy4), 5: (settingsEnemy5, Enemy5), 6: (settingsEnemy6, Enemy6)}[enemy]
+                    Enemy((all_sprites, game_sprites), (all_sprites, projectile_sprites), dataEnemy[0], (100 * (pos + 1), -HEIGHT + 100 * (pos + 1)), dataEnemy[1])
+            else:
+                pass #boss
+            numberOfWave += 1
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -351,24 +353,30 @@ def screenGame(level):
 
 
 class EventStatus():
-    def __init__(self):
-        self.event = 'Waiting'
+    def __init__(self, times, event):
+        self.events = ['Hiding', 'Spawning', 'Waiting', 'Playing']
+        self.times = times
+        self.event = event
         self.startEvent = pygame.time.get_ticks()
 
+    def isHiding(self):
+        return self.events[self.event] == 'Hiding'
+
+    def isSpawning(self):
+        return self.events[self.event] == 'Spawning'
+
     def isWaiting(self):
-        return self.event == 'Waiting'
+        return self.events[self.event] == 'Waiting'
 
     def isPlaying(self):
-        return self.event == 'Playing'
+        return self.events[self.event] == 'Playing'
 
-    def checkTime(self, time):
-        return pygame.time.get_ticks() - self.startEvent > time
+    def update(self):
+        if not self.isPlaying() and pygame.time.get_ticks() - self.startEvent > self.times[self.event]:
+            self.changeEvent()
 
     def changeEvent(self):
-        if self.isWaiting():
-            self.event = 'Playing'
-        else:
-            self.event = 'Waiting'
+        self.event = (self.event + 1) % 4
         self.startEvent = pygame.time.get_ticks()
 
 
