@@ -8,6 +8,7 @@ from random import random, randint, choice
 WIDTH, HEIGHT = 600, 800
 FPS = 60
 FPSEffect = 30
+FPS3 = 30
 FPSSpawnPlayer = 4
 
 pygame.init()
@@ -69,6 +70,8 @@ def load_graphics():
     spaceSatellite1 = pygame.transform.scale(load_image(nameOfspaceSatellite1, -1), (110, 44))
     nameOfspaceSatellite2 = cursor.execute('SELECT Source FROM Sources WHERE Name = \'spaceSatellite2\'').fetchone()[0]
     spaceSatellite2 = pygame.transform.scale(load_image(nameOfspaceSatellite2, -1), (110, 44))
+    nameOfShield = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Shield\'').fetchone()[0]
+    ShieldPic = load_image(nameOfShield, -1)
     # Выше потом тоже сделаю через цикл
     enemys = []
     for i in range(1, 7):
@@ -103,7 +106,13 @@ def load_graphics():
         nameOfSpaceMissile = cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'spaceMissile{i}\'').fetchone()[0]
         spaceMissile = load_image(nameOfSpaceMissile, -1)
         spaceMissileList.append(spaceMissile)
-    return BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3, regularExplosionList, sonicExplosionList, Heart, spaceMissileList
+
+    bonuses = []
+    for name in ['playerShield', 'playerSpeed', 'playerCountGuns', 'playerSpeedShooting']:
+        name = cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'{name}\'').fetchone()[0]
+        bonuse = load_image(name, -1)
+        bonuses.append(bonuse)
+    return BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, ShieldPic, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3, regularExplosionList, sonicExplosionList, Heart, spaceMissileList, bonuses
 
 
 def load_level(name):
@@ -258,12 +267,13 @@ def screenGame(level):
     background1_sprites = pygame.sprite.Group()
     background2_sprites = pygame.sprite.Group()
     projectile_sprites = pygame.sprite.Group()
+    bonuses_sprites = pygame.sprite.Group()
     explosion_sprites = pygame.sprite.Group()
     game_sprites = pygame.sprite.Group()
     player_sprite = pygame.sprite.Group()
     Background(all_sprites, background1_sprites, isFirst=True)
     Background(all_sprites, background1_sprites)
-    player = Player((player_sprite, game_sprites), (all_sprites, projectile_sprites), (WIDTH // 2, 700), Ship, 1000, 3, 10, 1, 250, 0, 0, 2000, 2000, 3000)
+    player = Player((player_sprite, game_sprites), (all_sprites, projectile_sprites), (WIDTH // 2, 700), Ship, 10, 1000, 3, 10, 1, 250, 0, 0, 2000, 2000, 3000)
     eventStatus = EventStatus([player.hideTime, player.spawnTime, player.waitTime, 0], 1)
 
     #тесты
@@ -272,6 +282,7 @@ def screenGame(level):
 
     #конец
     numberOfWave = 0
+    lastBonus = 0
     lastMeteor = 0
     running = True
     while running:
@@ -289,6 +300,7 @@ def screenGame(level):
                     Enemy((all_sprites, game_sprites), (all_sprites, projectile_sprites), dataEnemy[0], (100 * (pos + 1), -HEIGHT + 100 * (pos + 1)), dataEnemy[1])
             else:
                 pass #boss
+            lastBonus = pygame.time.get_ticks()
             numberOfWave += 1
 
         for event in pygame.event.get():
@@ -301,6 +313,7 @@ def screenGame(level):
 
         background1_sprites.draw(screen)
         background2_sprites.draw(screen)
+        bonuses_sprites.draw(screen)
         projectile_sprites.draw(screen)
         explosion_sprites.draw(screen)
         game_sprites.draw(screen)
@@ -314,6 +327,22 @@ def screenGame(level):
                 sprite.hpnow -= 500
             for explosionSettings in sprite.checkDamage(projectile_sprites):
                 Explosion((all_sprites, explosion_sprites), (explosionSettings[0] - camera.dx, explosionSettings[1]), explosionSettings[2], sonicExplosionList)
+
+        for sprite in bonuses_sprites:
+            if pygame.sprite.collide_mask(player, sprite):
+                lastBonus = pygame.time.get_ticks()
+                player.startBonus = pygame.time.get_ticks()
+                if False:  #sprite.image == bonuses[0]
+                    pass
+                elif sprite.image == bonuses[1]:
+                    player.speed = int(player.speed * 1.5)
+                elif sprite.image == bonuses[2]:
+                    player.countGuns = 2
+                else:
+                    player.speedShooting = int(player.speedShooting / 1.5)
+                sprite.kill()
+
+
 
         all_sprites.update()
         player_sprite.update()
@@ -330,6 +359,7 @@ def screenGame(level):
                     if type(sprite) != Player:
                         sprite.kill()
                 projectile_sprites.empty()
+                bonuses_sprites.empty()
                 eventStatus.changeEvent()
             elif sprite.lives == 0:
                 Explosion((all_sprites, explosion_sprites), (sprite.rect.centerx - camera.dx, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
@@ -338,14 +368,16 @@ def screenGame(level):
 
 
 
-
+        if pygame.time.get_ticks() - lastBonus > 1500 and eventStatus.isPlaying():
+            lastBonus = pygame.time.get_ticks()
+            Bonus((all_sprites, bonuses_sprites), randint(-200 + 50, 800 - 50))
 
         if random() * 1000 > 995 and pygame.time.get_ticks() - lastMeteor > 5000:
             lastMeteor = pygame.time.get_ticks()
             if random() * 100 > 50:
-                MeteorWithAstronaut(all_sprites, background2_sprites, posCenterX=randint(-200 + camera.dx + 50, 800 + camera.dx - 50))
+                MeteorWithAstronaut(all_sprites, background2_sprites, posCenterX=randint(-200 + 50, 800 - 50))
             else:
-                Satellite(all_sprites, background2_sprites, posCenterX=randint(-200 + camera.dx + 50, 800 + camera.dx - 50))
+                Satellite(all_sprites, background2_sprites, posCenterX=randint(-200 + 50, 800 - 50))
 
         if len(background1_sprites) == 1:
             Background(all_sprites, background1_sprites)
@@ -353,6 +385,29 @@ def screenGame(level):
         pygame.display.flip()
 
         clock.tick(FPS)
+
+
+class Bonus(pygame.sprite.Sprite):
+    def __init__(self, spriteGroups, posCenterX):
+        super().__init__(*spriteGroups)
+        self.image = choice(bonuses)
+        self.rect = self.image.get_rect()
+        self.posCenterX = posCenterX
+        self.rect.centerx = self.posCenterX
+        self.movingX = 0
+        self.sign = 1
+        self.lastUpdate = pygame.time.get_ticks()
+
+    def update(self):
+        self.rect.y += 1
+        if pygame.time.get_ticks() - self.lastUpdate > 1000 / FPS3:
+            self.lastUpdate = pygame.time.get_ticks()
+            self.movingX += self.sign
+            if abs(self.movingX) > 5:
+                self.sign = - self.sign
+            self.posCenterX += self.movingX
+            if self.rect.top >= HEIGHT:
+                self.kill()
 
 
 class EventStatus():
@@ -423,8 +478,10 @@ class GameObject(pygame.sprite.Sprite):
 
 
 class Player(GameObject):
-    def __init__(self, spriteGroups, projectileGroups, posCenter, image, hp, lives, damage, countGuns, speedShooting, movingX, movingY, hideTime, spawnTime, waitTime):
+    def __init__(self, spriteGroups, projectileGroups, posCenter, image, speed, hp, lives, damage, countGuns, speedShooting, movingX, movingY, hideTime, spawnTime, waitTime):
         super().__init__(spriteGroups, projectileGroups, posCenter, image, hp, lives, damage, countGuns, speedShooting, movingX, movingY)
+        self.speed = speed
+        self.default = [speed, countGuns, speedShooting]
         self.images = (self.image, pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA))
         self.numberImage = 0
         self.hideTime = hideTime
@@ -434,6 +491,8 @@ class Player(GameObject):
         self.died = pygame.time.get_ticks() - self.hideTime
         self.lastChangeImage = pygame.time.get_ticks()
         self.isDied = False
+        self.startBonus = 0
+        self.timeBonus = 3000
 
     def update(self):
         if self.hpnow <= 0:
@@ -441,6 +500,10 @@ class Player(GameObject):
             self.hpnow = self.hp
             self.died = pygame.time.get_ticks()
             self.isDied = True
+        if pygame.time.get_ticks() - self.startBonus > self.timeBonus:
+            self.speed = self.default[0]
+            self.countGuns = self.default[1]
+            self.speedShooting = self.default[2]
         self.movingX = 0
         self.movingY = 0
         if pygame.time.get_ticks() - self.died <= self.hideTime:
@@ -455,13 +518,13 @@ class Player(GameObject):
                     self.image = self.images[0]
             keystate = pygame.key.get_pressed()
             if keystate[pygame.K_a]:
-                self.movingX = -10
+                self.movingX += -self.speed
             if keystate[pygame.K_d]:
-                self.movingX = 10
+                self.movingX += self.speed
             if keystate[pygame.K_w]:
-                self.movingY = -10
+                self.movingY += -self.speed
             if keystate[pygame.K_s]:
-                self.movingY = 10
+                self.movingY += self.speed
             if pygame.time.get_ticks() - self.died > self.hideTime + self.spawnTime:
                 self.tryShoot(-5, self.rect.top)
 
@@ -662,7 +725,8 @@ class Satellite(pygame.sprite.Sprite):
 
         self.image = choice((spaceSatellite1, spaceSatellite2))
         self.rect = self.image.get_rect().move(0, 100)
-        self.posCenterX = self.rect.centerx
+        self.posCenterX = posCenterX
+        self.rect.centerx = self.posCenterX
 
     def update(self):
         self.rect.y += 2
@@ -763,7 +827,7 @@ class ButtonWithArrow(Button):
 
 if __name__ == '__main__':
     Level1, Level2, Level3, LevelCustom = load_levels()
-    BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3, regularExplosionList, sonicExplosionList, Heart, spaceMissileList = load_graphics()
+    BackgroundMenu, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, ShieldPic, Enemy1, Enemy2, Enemy3, Enemy4, Enemy5, Enemy6, laserBig1, laserMedium1, laserSmall1, laserBig2, laserMedium2, laserSmall2, laserBig3, laserMedium3, laserSmall3, regularExplosionList, sonicExplosionList, Heart, spaceMissileList, bonuses = load_graphics()
 
     resultDict = {'Exit1': screenIntro, 'Exit2': screenMainmenu, 'Exit3': screenСustomization, 'Exit4': screenChooseLevel, 'Exit5': screenGame}
     result = ('Exit5', Level1)
