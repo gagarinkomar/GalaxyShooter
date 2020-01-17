@@ -830,7 +830,7 @@ class Satellite(pygame.sprite.Sprite):
             self.kill()
 
 
-def screenСustomization():
+def screenSettings():
     bigShip = load_ship()[1]
     complexity = int(cursor.execute('SELECT Value FROM UserData WHERE Information = \'complexity\'').fetchone()[0])
 
@@ -965,7 +965,7 @@ if __name__ == '__main__':
     playerDie.set_volume(0.1)
     pygame.mixer.music.set_volume(0.05)
 
-    resultDict = {'Exit1': screenIntro, 'Exit2': screenMainmenu, 'Exit3': screenСustomization, 'Exit4': screenChooseLevel, 'Exit5': screenGame, 'Exit6': screenEndGame}
+    resultDict = {'Exit1': screenIntro, 'Exit2': screenMainmenu, 'Exit3': screenSettings, 'Exit4': screenChooseLevel, 'Exit5': screenGame, 'Exit6': screenEndGame}
     result = 'Exit1'  #('Exit5', Level1)
     while result:
         if type(result) == tuple:
