@@ -7,8 +7,7 @@ from random import random, randint, choice
 
 WIDTH, HEIGHT = 600, 800
 FPS = 60
-FPSEffect = 30
-FPS3 = 30
+FPS2 = 30
 FPSSpawnPlayer = 4
 
 pygame.init()
@@ -45,6 +44,7 @@ def load_sound(name):
         raise SystemExit(message)
     return sound
 
+
 def load_sounds():
     result = [load_sound(cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'{name}\'').fetchone()[0]) for name in ['spawnEnemy', 'spawnPlayer', 'shieldDown', 'shieldUp', 'shieldUp', 'rocketShoot', 'playerDie', 'pickupBonus', 'laserShoot', 'explosionSonic', 'explosionRegular', 'enemyDie', 'clickButton']]
     music = cursor.execute('SELECT Source FROM Sources WHERE Name = \'music\'').fetchone()[0]
@@ -54,6 +54,7 @@ def load_sounds():
         print('Cannot load music:', music)
         raise SystemExit(message)
     return result
+
 
 def load_ship():
     numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
@@ -142,7 +143,7 @@ def screenIntro():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            if event.type == pygame.KEYUP:
+            if event.type == pygame.KEYUP or event.type == pygame.MOUSEBUTTONUP:
                 return 'Exit2'
 
         screen.fill(pygame.Color('Black'))
@@ -156,16 +157,16 @@ def screenIntro():
         if valuechanging == 1 and (hsv[2] + valuechanging) > 60:
             valuechanging = -1
         elif valuechanging == -1 and (hsv[2] + valuechanging) < 1:
-            break
+            return 'Exit2'
 
         color.hsva = (hsv[0], hsv[1], hsv[2] + valuechanging, hsv[3])
 
         pygame.display.flip()
 
         clock.tick(20)
-    return 'Exit2'
 
 def screenEndGame(result, numberOfWave):
+    pygame.mixer.music.stop()
     color = pygame.Color('White')
     posY1 = -150
     posY2 = HEIGHT - 100
@@ -174,6 +175,7 @@ def screenEndGame(result, numberOfWave):
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.KEYUP or event.type == pygame.MOUSEBUTTONUP:
+                pygame.mouse.set_visible(1)
                 return 'Exit4'
 
         screen.fill(pygame.Color('Black'))
@@ -194,11 +196,18 @@ def screenEndGame(result, numberOfWave):
 
 def screenMainmenu():
     all_sprites = pygame.sprite.Group()
-    buttonChooseLevel = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 100), (300, 350), ('Выбрать уровень', 30, pygame.Color('White')))
-    buttonСustomization = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 100), (300, 500), ('Кастомизация', 30, pygame.Color('White')))
+    buttonChooseLevel = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 75), (300, 300), ('Выбрать уровень', 30, pygame.Color('White')))
+    buttonСustomization = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 75), (300, 400), ('Кастомизация', 30, pygame.Color('White')))
+    buttonRestart = ButtonWithText(all_sprites, (
+    pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 75),
+                                         (300, 500), ('Перезапустить', 30,
+                                                      pygame.Color('White')))
+    buttonExit = ButtonWithText(all_sprites, (
+    pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 75),
+                                         (300, 600), ('Выйти', 30,
+                                                      pygame.Color('White')))
 
-    running = True
-    while running:
+    while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
@@ -209,6 +218,12 @@ def screenMainmenu():
                 elif buttonСustomization.isPressed():
                     clickButton.play()
                     return 'Exit3'
+                elif buttonRestart.isPressed():
+                    clickButton.play()
+                    return 'Exit1'
+                elif buttonExit.isPressed():
+                    clickButton.play()
+                    terminate()
 
         screen.blit(BackgroundMenu1, (0, 0))
 
@@ -244,8 +259,7 @@ def screenChooseLevel():
     buttonLevelCustom = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 50), (300, 590), ('Свой уровень', 30, pygame.Color('White')))
     buttonReturn = ButtonWithArrow(all_sprites, (pygame.Color('Red4'), pygame.Color('Red')), (100, 100), (540, 740), (((90, 10), (10, 50), (90, 90)), 0), None)
 
-    running = True
-    while running:
+    while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
@@ -276,7 +290,7 @@ def screenChooseLevel():
                     return ('Exit5', (Level8, ))
                 elif buttonLevelCustom.isPressed():
                     clickButton.play()
-                    return ('Exit5', (LevelCustom))
+                    return ('Exit5', (LevelCustom, ))
                 elif buttonReturn.isPressed():
                     clickButton.play()
                     return 'Exit2'
@@ -293,6 +307,8 @@ def screenChooseLevel():
         clock.tick(FPS)
 
 def screenGame(level):
+    pygame.mouse.set_visible(0)
+    pygame.mixer.music.play()
     settingsEnemy1, settingsEnemy2, settingsEnemy3, settingsEnemy4, settingsEnemy5, settingsEnemy6 = load_enemySettings()
     Ship = load_ship()[0]
 
@@ -305,8 +321,8 @@ def screenGame(level):
     explosion_sprites = pygame.sprite.Group()
     game_sprites = pygame.sprite.Group()
     player_sprite = pygame.sprite.Group()
-    Background(all_sprites, background1_sprites, isFirst=True)
-    Background(all_sprites, background1_sprites)
+    Background((all_sprites, background1_sprites), True)
+    Background((all_sprites, background1_sprites))
     player = Player((player_sprite, game_sprites), (all_sprites, projectile_sprites), (WIDTH // 2, 700), Ship, ShieldPic, 10, 1000, 3, 10, 1, 250, 0, 0, 2000, 2000, 3000)
     eventStatus = EventStatus([player.hideTime, player.spawnTime, player.waitTime, 0], 1)
 
@@ -411,12 +427,12 @@ def screenGame(level):
         if random() * 1000 > 995 and pygame.time.get_ticks() - lastMeteor > 5000:
             lastMeteor = pygame.time.get_ticks()
             if random() * 100 > 50:
-                MeteorWithAstronaut(all_sprites, background2_sprites, posCenterX=randint(-200 + 50, 800 - 50))
+                MeteorWithAstronaut((all_sprites, background2_sprites), randint(-150, 750))
             else:
-                Satellite(all_sprites, background2_sprites, posCenterX=randint(-200 + 50, 800 - 50))
+                Satellite((all_sprites, background2_sprites), randint(-150, 750))
 
         if len(background1_sprites) == 1:
-            Background(all_sprites, background1_sprites)
+            Background((all_sprites, background1_sprites))
 
         pygame.display.flip()
 
@@ -436,7 +452,7 @@ class Bonus(pygame.sprite.Sprite):
 
     def update(self):
         self.rect.y += 1
-        if pygame.time.get_ticks() - self.lastUpdate > 1000 / FPS3:
+        if pygame.time.get_ticks() - self.lastUpdate > 1000 / FPS2:
             self.lastUpdate = pygame.time.get_ticks()
             self.movingX += self.sign
             if abs(self.movingX) > 5:
@@ -644,7 +660,7 @@ class Explosion(pygame.sprite.Sprite):
         self.lastUpdate = pygame.time.get_ticks()
 
     def update(self):
-        if pygame.time.get_ticks() - self.lastUpdate > 1000 / FPSEffect:
+        if pygame.time.get_ticks() - self.lastUpdate > 1000 / FPS2:
             self.lastUpdate = pygame.time.get_ticks()
             self.imageNumber += 1
             if self.imageNumber == len(self.ExplosionList):
@@ -658,7 +674,7 @@ class Explosion(pygame.sprite.Sprite):
 
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, target, posShiftX, movingY, posCenterY):
-        super().__init__(*target.projectileGroups)
+        super().__init__(target.projectileGroups)
 
         self.type = type(target)
         if self.type == Player:
@@ -688,8 +704,8 @@ class Projectile(pygame.sprite.Sprite):
 
 
 class Background(pygame.sprite.Sprite):
-    def __init__(self, *spriteGroups, isFirst=False):
-        super().__init__(*spriteGroups)
+    def __init__(self, spriteGroups, isFirst=False):
+        super().__init__(spriteGroups)
         self.image = BackgroundGame
         self.rect = self.image.get_rect()
         self.rect.centerx = WIDTH // 2
@@ -747,8 +763,8 @@ class Camera:
 
 
 class MeteorWithAstronaut(pygame.sprite.Sprite):
-    def __init__(self, *spriteGroups, posCenterX):
-        super().__init__(*spriteGroups)
+    def __init__(self, spriteGroups, posCenterX):
+        super().__init__(spriteGroups)
 
         self.image = pygame.Surface(Meteor1.get_size(), pygame.SRCALPHA)
         self.imageMeteor = choice((Meteor1, Meteor2))
@@ -800,8 +816,8 @@ class MeteorWithAstronaut(pygame.sprite.Sprite):
 
 
 class Satellite(pygame.sprite.Sprite):
-    def __init__(self, *spriteGroups, posCenterX):
-        super().__init__(*spriteGroups)
+    def __init__(self, spriteGroups, posCenterX):
+        super().__init__(spriteGroups)
 
         self.image = choice((spaceSatellite1, spaceSatellite2))
         self.rect = self.image.get_rect().move(0, 100)
@@ -886,8 +902,8 @@ def screenСustomization():
 
 
 class Button(pygame.sprite.Sprite):
-    def __init__(self, spriteGroup, colors, size, posCenter):
-        super().__init__(spriteGroup)
+    def __init__(self, spriteGroups, colors, size, posCenter):
+        super().__init__(spriteGroups)
         self.colors = colors
         self.size = size
         self.posCenter = posCenter
@@ -905,8 +921,8 @@ class Button(pygame.sprite.Sprite):
 
 
 class ButtonWithText(Button):
-    def __init__(self, spriteGroup, colors, size, posCenter, textInfo):
-        super().__init__(spriteGroup, colors, size, posCenter)
+    def __init__(self, spriteGroups, colors, size, posCenter, textInfo):
+        super().__init__(spriteGroups, colors, size, posCenter)
         self.textInfo = textInfo
 
         self.draw()
@@ -919,8 +935,8 @@ class ButtonWithText(Button):
         draw_text(self.image, self.textInfo[0], self.textInfo[1], self.rect.width // 2, self.rect.height // 2 - self.textInfo[1] // 4, self.textInfo[2])
 
 class ButtonWithArrow(Button):
-    def __init__(self, spriteGroup, colors, size, posCenter, polygonInfo, rectInfo):
-        super().__init__(spriteGroup, colors, size, posCenter)
+    def __init__(self, spriteGroups, colors, size, posCenter, polygonInfo, rectInfo):
+        super().__init__(spriteGroups, colors, size, posCenter)
         self.polygonInfo = polygonInfo
         self.rectInfo = rectInfo
 
@@ -947,9 +963,10 @@ if __name__ == '__main__':
     explosionRegular.set_volume(0.2)
     enemyDie.set_volume(0.1)
     playerDie.set_volume(0.1)
+    pygame.mixer.music.set_volume(0.05)
 
     resultDict = {'Exit1': screenIntro, 'Exit2': screenMainmenu, 'Exit3': screenСustomization, 'Exit4': screenChooseLevel, 'Exit5': screenGame, 'Exit6': screenEndGame}
-    result = 'Exit2'  #('Exit5', Level1)
+    result = 'Exit1'  #('Exit5', Level1)
     while result:
         if type(result) == tuple:
             result = resultDict[result[0]](*result[1])
