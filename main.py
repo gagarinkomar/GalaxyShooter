@@ -38,7 +38,22 @@ def load_image(name, color_key=None):
 
 def load_sound(name):
     fullname = os.path.join('data', 'sounds', name)
-    pass
+    try:
+        sound = pygame.mixer.Sound(fullname)
+    except pygame.error as message:
+        print('Cannot load sound:', name)
+        raise SystemExit(message)
+    return sound
+
+def load_sounds():
+    result = [load_sound(cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'{name}\'').fetchone()[0]) for name in ['spawnEnemy', 'spawnPlayer', 'shieldDown', 'shieldUp', 'shieldUp', 'rocketShoot', 'playerDie', 'pickupBonus', 'laserShoot', 'explosionSonic', 'explosionRegular', 'enemyDie', 'clickButton']]
+    music = cursor.execute('SELECT Source FROM Sources WHERE Name = \'music\'').fetchone()[0]
+    try:
+        pygame.mixer.music.load(os.path.join('data', 'sounds', music))
+    except pygame.error as message:
+        print('Cannot load music:', music)
+        raise SystemExit(message)
+    return result
 
 def load_ship():
     numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
@@ -189,8 +204,10 @@ def screenMainmenu():
                 terminate()
             elif event.type == pygame.MOUSEBUTTONUP:
                 if buttonChooseLevel.isPressed():
+                    clickButton.play()
                     return 'Exit4'
                 elif buttonСustomization.isPressed():
+                    clickButton.play()
                     return 'Exit3'
 
         screen.blit(BackgroundMenu1, (0, 0))
@@ -234,24 +251,34 @@ def screenChooseLevel():
                 terminate()
             elif event.type == pygame.MOUSEBUTTONUP:
                 if buttonLevel1.isPressed():
+                    clickButton.play()
                     return ('Exit5', (Level1, ))
                 elif buttonLevel2.isPressed():
+                    clickButton.play()
                     return ('Exit5', (Level2, ))
                 elif buttonLevel3.isPressed():
+                    clickButton.play()
                     return ('Exit5', (Level3, ))
                 elif buttonLevel4.isPressed():
+                    clickButton.play()
                     return ('Exit5', (Level4, ))
                 elif buttonLevel5.isPressed():
+                    clickButton.play()
                     return ('Exit5', (Level5, ))
                 elif buttonLevel6.isPressed():
+                    clickButton.play()
                     return ('Exit5', (Level6, ))
                 elif buttonLevel7.isPressed():
+                    clickButton.play()
                     return ('Exit5', (Level7, ))
                 elif buttonLevel8.isPressed():
+                    clickButton.play()
                     return ('Exit5', (Level8, ))
                 elif buttonLevelCustom.isPressed():
+                    clickButton.play()
                     return ('Exit5', (LevelCustom))
                 elif buttonReturn.isPressed():
+                    clickButton.play()
                     return 'Exit2'
 
         screen.blit(BackgroundMenu2, (0, 0))
@@ -295,6 +322,8 @@ def screenGame(level):
             for pos, enemy in enumerate(level[1:][numberOfWave]):
                 dataEnemy = {1: (settingsEnemy1, enemys[0]), 2: (settingsEnemy2, enemys[1]), 3: (settingsEnemy3, enemys[2]), 4: (settingsEnemy4, enemys[3]), 5: (settingsEnemy5, enemys[4]), 6: (settingsEnemy6, enemys[5])}[enemy]
                 Enemy((all_sprites, game_sprites), (all_sprites, projectile_sprites), dataEnemy[0], (100 * (pos + 1), -HEIGHT + 100 * (pos + 1)), dataEnemy[1])
+                pygame.mixer.stop()
+                spawnEnemy.play()
             lastBonus = pygame.time.get_ticks()
             numberOfWave += 1
         elif player.lives != 0 and numberOfWave == len(level) - 1 and eventStatus.isSpawning():
@@ -329,9 +358,12 @@ def screenGame(level):
 
             for explosionSettings in sprite.checkDamage(projectile_sprites):
                 Explosion((all_sprites, explosion_sprites), (explosionSettings[0] - camera.dx, explosionSettings[1]), explosionSettings[2], sonicExplosionList)
+                explosionSonic.play()
 
         for sprite in bonuses_sprites:
             if pygame.sprite.collide_mask(player, sprite):
+                pygame.mixer.stop()
+                pickupBonus.play()
                 lastBonus = pygame.time.get_ticks()
                 player.startBonus = pygame.time.get_ticks()
                 if sprite.image == bonuses[0]:
@@ -363,9 +395,13 @@ def screenGame(level):
                 projectile_sprites.empty()
                 bonuses_sprites.empty()
                 eventStatus.changeEvent()
+                pygame.mixer.stop()
+                playerDie.play()
             elif sprite.lives == 0:
                 Explosion((all_sprites, explosion_sprites), (sprite.rect.centerx - camera.dx, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
                 sprite.kill()
+                pygame.mixer.stop()
+                enemyDie.play()
 
 
         if pygame.time.get_ticks() - lastBonus > 15000 and eventStatus.isPlaying():
@@ -513,12 +549,16 @@ class Player(GameObject):
         self.rect = self.image.get_rect(center=self.rect.center)
         self.mask = pygame.mask.from_surface(self.image)
         self.isShield = True
+        pygame.mixer.stop()
+        shieldUp.play()
 
     def unshield(self):
         self.image = self.images[0]
         self.rect = self.image.get_rect(center=self.rect.center)
         self.mask = pygame.mask.from_surface(self.image)
         self.isShield = False
+        pygame.mixer.stop()
+        shieldDown.play()
 
     def update(self):
         if self.hpnow <= 0:
@@ -621,6 +661,10 @@ class Projectile(pygame.sprite.Sprite):
         super().__init__(*target.projectileGroups)
 
         self.type = type(target)
+        if self.type == Player:
+            rocketShoot.play()
+        else:
+            laserShoot.play()
         self.damage = target.damage
         self.movingY = movingY
         self.create = pygame.time.get_ticks()
@@ -801,18 +845,23 @@ def screenСustomization():
                 changeComplexity = False
                 numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
                 if buttonLeft2.isPressed():
+                    clickButton.play()
                     numberOfShip = (numberOfShip + 12 - 1 - 1) % 12 + 1
                     changeShip = True
                 elif buttonRight2.isPressed():
+                    clickButton.play()
                     numberOfShip = (numberOfShip + 12 - 1 + 1) % 12 + 1
                     changeShip = True
                 elif buttonLeft1.isPressed():
+                    clickButton.play()
                     complexity = max([complexity - 1, -1])
                     changeComplexity = True
                 elif buttonRight1.isPressed():
+                    clickButton.play()
                     complexity = min([complexity + 1, 2])
                     changeComplexity = True
                 elif buttonReturn.isPressed():
+                    clickButton.play()
                     return 'Exit2'
                 if changeShip:
                     cursor.execute(f'UPDATE UserData SET Value = {numberOfShip} WHERE Information = \'numberOfShip\'')
@@ -892,6 +941,12 @@ class ButtonWithArrow(Button):
 if __name__ == '__main__':
     Level1, Level2, Level3, Level4, Level5, Level6, Level7, Level8, LevelCustom = load_levels()
     BackgroundMenu1, BackgroundMenu2, BackgroundGame, Meteor1, Meteor2, spaceAstronaut1_1, spaceAstronaut1_2, spaceAstronaut2_1, spaceAstronaut2_2, spaceSatellite1, spaceSatellite2, ShieldPic, Heart, enemys, lasers, regularExplosionList, sonicExplosionList, spaceMissileList, bonuses = load_graphics()
+    spawnEnemy, spawnPlayer, shieldDown, shieldUp, shieldUp, rocketShoot, playerDie, pickupBonus, laserShoot, explosionSonic, explosionRegular, enemyDie, clickButton = load_sounds()
+    rocketShoot.set_volume(0.1)
+    laserShoot.set_volume(0.2)
+    explosionRegular.set_volume(0.2)
+    enemyDie.set_volume(0.1)
+    playerDie.set_volume(0.1)
 
     resultDict = {'Exit1': screenIntro, 'Exit2': screenMainmenu, 'Exit3': screenСustomization, 'Exit4': screenChooseLevel, 'Exit5': screenGame, 'Exit6': screenEndGame}
     result = 'Exit2'  #('Exit5', Level1)
