@@ -772,12 +772,24 @@ class Satellite(pygame.sprite.Sprite):
 
 def screenСustomization():
     bigShip = load_ship()[1]
+    complexity = int(cursor.execute('SELECT Value FROM UserData WHERE Information = \'complexity\'').fetchone()[0])
 
     all_sprites = pygame.sprite.Group()
-    buttonLeft = ButtonWithArrow(all_sprites, (pygame.Color('Forestgreen'), pygame.Color('Limegreen')), (200, 100), (180, 400), (((90, 10), (10, 50), (90, 90)), 0), ((90, 35, 80, 30), 0))
-    buttonRight = ButtonWithArrow(all_sprites, (pygame.Color('Forestgreen'), pygame.Color('Limegreen')), (200, 100), (420, 400), (((110, 10), (190, 50), (110, 90)), 0), ((30, 35, 80, 30), 0))
+    buttonLeft1 = ButtonWithArrow(all_sprites, (
+    pygame.Color('Forestgreen'), pygame.Color('Limegreen')), (100, 100),
+                                  (100, 250),
+                                  (((90, 10), (10, 50), (90, 90)), 0),
+                                  None)
+    buttonRight1 = ButtonWithArrow(all_sprites, (
+    pygame.Color('Forestgreen'), pygame.Color('Limegreen')), (100, 100),
+                                   (500, 250),
+                                   (((10, 10), (90, 50), (10, 90)), 0),
+                                   None)
+    buttonLeft2 = ButtonWithArrow(all_sprites, (pygame.Color('Forestgreen'), pygame.Color('Limegreen')), (200, 100), (180, 550), (((90, 10), (10, 50), (90, 90)), 0), ((90, 35, 80, 30), 0))
+    buttonRight2 = ButtonWithArrow(all_sprites, (pygame.Color('Forestgreen'), pygame.Color('Limegreen')), (200, 100), (420, 550), (((110, 10), (190, 50), (110, 90)), 0), ((30, 35, 80, 30), 0))
     buttonReturn = ButtonWithArrow(all_sprites, (pygame.Color('Red4'), pygame.Color('Red')), (100, 100), (540, 740), (((90, 10), (10, 50), (90, 90)), 0), None)
-    bigShipRect = bigShip.get_rect(center=(300, 600))
+    bigShipRect = bigShip.get_rect(center=(300, 700))
+    complexitys = {-1: ('ЛЕГКО', pygame.Color('Green')), 0: ('НОРМАЛЬНО', pygame.Color('White')), 1: ('СЛОЖНО', pygame.Color('Red')), 2: ('ХАРДКОР', pygame.Color('Red4'))}
 
     running = True
     while running:
@@ -785,24 +797,36 @@ def screenСustomization():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONUP:
-                change = False
+                changeShip = False
+                changeComplexity = False
                 numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
-                if buttonLeft.isPressed():
+                if buttonLeft2.isPressed():
                     numberOfShip = (numberOfShip + 12 - 1 - 1) % 12 + 1
-                    change = True
-                elif buttonRight.isPressed():
+                    changeShip = True
+                elif buttonRight2.isPressed():
                     numberOfShip = (numberOfShip + 12 - 1 + 1) % 12 + 1
-                    change = True
+                    changeShip = True
+                elif buttonLeft1.isPressed():
+                    complexity = max([complexity - 1, -1])
+                    changeComplexity = True
+                elif buttonRight1.isPressed():
+                    complexity = min([complexity + 1, 2])
+                    changeComplexity = True
                 elif buttonReturn.isPressed():
                     return 'Exit2'
-                if change:
+                if changeShip:
                     cursor.execute(f'UPDATE UserData SET Value = {numberOfShip} WHERE Information = \'numberOfShip\'')
                     connection.commit()
                     bigShip = load_ship()[1]
+                if changeComplexity:
+                    cursor.execute(f'UPDATE UserData SET Value = {complexity} WHERE Information = \'complexity\'')
+                    connection.commit()
         screen.blit(BackgroundMenu2, (0, 0))
         screen.blit(bigShip, bigShipRect)
 
-        draw_text(screen, 'Выберите звездолёт', 50, 300, 200, pygame.Color('White'))
+        draw_text(screen, 'Выберите уровень сложности', 50, 300, 100, pygame.Color('White'))
+        draw_text(screen, complexitys[complexity][0], 50, 300, 250, complexitys[complexity][1])
+        draw_text(screen, 'Выберите звездолёт', 50, 300, 400, pygame.Color('White'))
 
         all_sprites.draw(screen)
         all_sprites.update()
