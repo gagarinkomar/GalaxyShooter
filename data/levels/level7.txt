@@ -1,2 +1,2 @@
-Enemy1;Enemy1;Enemy2
-Enemy3;Enemy3
+Enemy1;Enemy1;Enemy1;Enemy1
+Enemy6;Enemy3;Enemy6

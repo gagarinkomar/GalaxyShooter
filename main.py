@@ -18,7 +18,7 @@ clock = pygame.time.Clock()
 connection = sqlite3.connect(os.path.join('data', 'Config.db'))
 cursor = connection.cursor()
 
-def load_image(name, color_key=None):
+def load_image(name, color_key=None):  # Загрузка картинки
     fullname = os.path.join('data', 'images', name)
     try:
         image = pygame.image.load(fullname).convert()
@@ -35,7 +35,7 @@ def load_image(name, color_key=None):
     return image
 
 
-def load_sound(name):
+def load_sound(name):  # Загрузка звука
     fullname = os.path.join('data', 'sounds', name)
     try:
         sound = pygame.mixer.Sound(fullname)
@@ -45,7 +45,7 @@ def load_sound(name):
     return sound
 
 
-def load_sounds():
+def load_sounds():  # Загрузка всех звуков
     result = [load_sound(cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'{name}\'').fetchone()[0]) for name in ['spawnEnemy', 'spawnPlayer', 'shieldDown', 'shieldUp', 'shieldUp', 'rocketShoot', 'playerDie', 'pickupBonus', 'laserShoot', 'explosionSonic', 'explosionRegular', 'enemyDie', 'clickButton']]
     music = cursor.execute('SELECT Source FROM Sources WHERE Name = \'music\'').fetchone()[0]
     try:
@@ -56,7 +56,7 @@ def load_sounds():
     return result
 
 
-def load_ship():
+def load_ship():  # Загрузка корабля игрока
     numberOfShip = cursor.execute('SELECT Value FROM UserData WHERE Information = \'numberOfShip\'').fetchone()[0]
     nameOfShip = cursor.execute('SELECT Source FROM Sources WHERE Name = \'Ship\'').fetchone()[0]
     nameOfShip = nameOfShip[:-4] + str(numberOfShip) + nameOfShip[-4:]
@@ -65,7 +65,7 @@ def load_ship():
     return Ship, bigShip
 
 
-def load_graphics():
+def load_graphics():  # Загрузка всех картинок
     images = [load_image(cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'{name}\'').fetchone()[0], -1) for name in ['Meteor1', 'Meteor2', 'spaceAstronaut1_1', 'spaceAstronaut1_2', 'spaceAstronaut2_1', 'spaceAstronaut2_2', 'spaceSatellite1', 'spaceSatellite2', 'Shield', 'Heart']]
     images[6] = pygame.transform.scale(images[6], (110, 44))
     images[7] = pygame.transform.scale(images[7], (110, 44))
@@ -88,7 +88,7 @@ def load_graphics():
     return backgrounds[0], backgrounds[1],  backgrounds[2], images[0], images[1], images[2], images[3], images[4], images[5], images[6], images[7], images[8], images[9], enemys, lasers, regularExplosionList, sonicExplosionList, spaceMissileList, bonuses
 
 
-def load_level(name):
+def load_level(name):  # Загрузка уровня
     fullname = cursor.execute(f'SELECT Source FROM Sources WHERE Name = \'{name}\'').fetchone()[0]
     fullname = os.path.join('data', 'levels', fullname)
     try:
@@ -103,12 +103,12 @@ def load_level(name):
     return result
 
 
-def load_levels():
+def load_levels():  # Загрузка всех уровней
     result = [load_level(name) for name in ['Level1', 'Level2', 'Level3', 'Level4', 'Level5', 'Level6', 'Level7', 'Level8', 'LevelCustom']]
     return result
 
 
-def load_enemySettings():
+def load_enemySettings():  # Загрузка настроек для врагов
     settingsEnemy = []
     complexity = cursor.execute('SELECT Value FROM UserData WHERE Information = \'complexity\'').fetchone()[0]
     for i in range(1, 7):
@@ -119,13 +119,13 @@ def load_enemySettings():
     return settingsEnemy
 
 
-def terminate():
+def terminate():  # Экстренное завершение
     pygame.quit()
     connection.close()
     sys.exit()
 
 
-def draw_text(screen, text, size, x, y, color):
+def draw_text(screen, text, size, x, y, color):  # Нарисовать текст
     font = pygame.font.Font(None, size)
     string_rendered = font.render(text, 1, color)
     intro_rect = string_rendered.get_rect()
@@ -133,7 +133,7 @@ def draw_text(screen, text, size, x, y, color):
     screen.blit(string_rendered, intro_rect)
 
 
-def screenIntro():
+def screenIntro():  # Окно заставки
     color = pygame.Color('White')
     hsv = color.hsva
     color.hsva = (hsv[0], hsv[1], 0, hsv[3])
@@ -165,7 +165,8 @@ def screenIntro():
 
         clock.tick(20)
 
-def screenEndGame(result, numberOfWave):
+
+def screenEndGame(result, countWaves):  # Окно после окончания игры
     pygame.mixer.music.stop()
     color = pygame.Color('White')
     posY1 = -150
@@ -187,17 +188,17 @@ def screenEndGame(result, numberOfWave):
             posY2 -= 10
         else:
             draw_text(screen, 'Пройдено волн:', 50, WIDTH // 2, posY1 + 120, color)
-            draw_text(screen, str(numberOfWave), 50, WIDTH // 2, posY2 + 120, color)
+            draw_text(screen, countWaves, 50, WIDTH // 2, posY2 + 120, color)
 
         pygame.display.flip()
 
         clock.tick(FPS)
 
 
-def screenMainmenu():
+def screenMainmenu():  # Окно главного меню
     all_sprites = pygame.sprite.Group()
     buttonChooseLevel = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 75), (300, 300), ('Выбрать уровень', 30, pygame.Color('White')))
-    buttonСustomization = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 75), (300, 400), ('Кастомизация', 30, pygame.Color('White')))
+    buttonSettings = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 75), (300, 400), ('Настройки', 30, pygame.Color('White')))
     buttonRestart = ButtonWithText(all_sprites, (
     pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 75),
                                          (300, 500), ('Перезапустить', 30,
@@ -215,7 +216,7 @@ def screenMainmenu():
                 if buttonChooseLevel.isPressed():
                     clickButton.play()
                     return 'Exit4'
-                elif buttonСustomization.isPressed():
+                elif buttonSettings.isPressed():
                     clickButton.play()
                     return 'Exit3'
                 elif buttonRestart.isPressed():
@@ -235,7 +236,7 @@ def screenMainmenu():
         clock.tick(FPS)
 
 
-def screenChooseLevel():
+def screenChooseLevel():  # Окно выбора уровня
     colors = []
     for level in ['Level1', 'Level2', 'Level3', 'Level4', 'Level5', 'Level6', 'Level7', 'Level8']:
         if int(cursor.execute(f'SELECT Value FROM UserData WHERE Information = \'{level}\'').fetchone()[0]):
@@ -256,7 +257,11 @@ def screenChooseLevel():
                                   ('Уровень 7', 30, pygame.Color('White')))
     buttonLevel8 = ButtonWithText(all_sprites, (colors[7][0], colors[7][1]), (200, 50), (405, 530),
                                   ('Уровень 8', 30, pygame.Color('White')))
-    buttonLevelCustom = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 50), (300, 590), ('Свой уровень', 30, pygame.Color('White')))
+    buttonLevelCustom = ButtonWithText(all_sprites, (pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 50), (195, 590), ('Свой уровень', 30, pygame.Color('White')))
+    buttonInfinity = ButtonWithText(all_sprites, (
+    pygame.Color('Deepskyblue3'), pygame.Color('Deepskyblue4')), (200, 50),
+                                       (405, 590), ('Бесконечность', 30,
+                                                    pygame.Color('White')))
     buttonReturn = ButtonWithArrow(all_sprites, (pygame.Color('Red4'), pygame.Color('Red')), (100, 100), (540, 740), (((90, 10), (10, 50), (90, 90)), 0), None)
 
     while True:
@@ -291,6 +296,11 @@ def screenChooseLevel():
                 elif buttonLevelCustom.isPressed():
                     clickButton.play()
                     return ('Exit5', (LevelCustom, ))
+                elif buttonInfinity.isPressed():
+                    level = [[randint(1, 6) for i in range(randint(1, 5))] for j in range(1000)]
+                    level = ['Infinity'] + level
+                    clickButton.play()
+                    return ('Exit5', (level, ))
                 elif buttonReturn.isPressed():
                     clickButton.play()
                     return 'Exit2'
@@ -306,9 +316,9 @@ def screenChooseLevel():
 
         clock.tick(FPS)
 
-def screenGame(level):
+def screenGame(level):  # Окно игры
     pygame.mouse.set_visible(0)
-    pygame.mixer.music.play()
+    pygame.mixer.music.play(-1)
     settingsEnemy1, settingsEnemy2, settingsEnemy3, settingsEnemy4, settingsEnemy5, settingsEnemy6 = load_enemySettings()
     Ship = load_ship()[0]
 
@@ -332,9 +342,9 @@ def screenGame(level):
     running = True
     while running:
         eventStatus.update()
-        if player.lives == 0 and eventStatus.isSpawning():
-            return ('Exit6', ('не пройден', numberOfWave))
-        elif player.lives != 0 and numberOfWave != len(level) - 1 and len(game_sprites) == 1 and eventStatus.isPlaying():
+        if player.lives == 0 and eventStatus.isSpawning():  # Проверка на конец игры
+            return ('Exit6', ('не пройден', f'{numberOfWave}/{len(level) - 1}'))
+        elif player.lives != 0 and numberOfWave != len(level) - 1 and len(game_sprites) == 1 and eventStatus.isPlaying():  # Проверка на смерть всех врагов
             for pos, enemy in enumerate(level[1:][numberOfWave]):
                 dataEnemy = {1: (settingsEnemy1, enemys[0]), 2: (settingsEnemy2, enemys[1]), 3: (settingsEnemy3, enemys[2]), 4: (settingsEnemy4, enemys[3]), 5: (settingsEnemy5, enemys[4]), 6: (settingsEnemy6, enemys[5])}[enemy]
                 Enemy((all_sprites, game_sprites), (all_sprites, projectile_sprites), dataEnemy[0], (100 * (pos + 1), -HEIGHT + 100 * (pos + 1)), dataEnemy[1])
@@ -342,10 +352,10 @@ def screenGame(level):
                 spawnEnemy.play()
             lastBonus = pygame.time.get_ticks()
             numberOfWave += 1
-        elif player.lives != 0 and numberOfWave == len(level) - 1 and eventStatus.isSpawning():
+        elif player.lives != 0 and numberOfWave == len(level) - 1 and eventStatus.isSpawning():  # Проверка на конец игры
             cursor.execute(f'UPDATE UserData SET Value = 1 WHERE Information = \'{level[0]}\'')
             connection.commit()
-            return ('Exit6', ('пройден', numberOfWave))
+            return ('Exit6', ('пройден', f'{numberOfWave}/{len(level) - 1}'))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -361,22 +371,22 @@ def screenGame(level):
         projectile_sprites.draw(screen)
         explosion_sprites.draw(screen)
         game_sprites.draw(screen)
-        for i in range(1, player.lives + 1):
+        for i in range(1, player.lives + 1):  # Отрисовка полоски жизни
             screen.blit(Heart, (WIDTH - (50 * i + Heart.get_rect().w // 2), 50 - Heart.get_rect().h // 2))
-        if player.lives:
+        if player.lives:  # Отрисовка сердец
             pygame.draw.rect(screen, pygame.Color('Red'), (30, 30, round(player.hpnow * 0.25), 30))
 
 
         for sprite in game_sprites:
-            if pygame.sprite.collide_mask(player, sprite) and type(sprite) != Player:
+            if pygame.sprite.collide_mask(player, sprite) and type(sprite) != Player:  # Проверка на столкновение
                 player.hitting(500)
                 sprite.hitting(500)
 
-            for explosionSettings in sprite.checkDamage(projectile_sprites):
+            for explosionSettings in sprite.checkDamage(projectile_sprites):  # Проверка на попадание снаряда
                 Explosion((all_sprites, explosion_sprites), (explosionSettings[0] - camera.dx, explosionSettings[1]), explosionSettings[2], sonicExplosionList)
                 explosionSonic.play()
 
-        for sprite in bonuses_sprites:
+        for sprite in bonuses_sprites:  # Проверка на столкновение с бонусом
             if pygame.sprite.collide_mask(player, sprite):
                 pygame.mixer.stop()
                 pickupBonus.play()
@@ -397,11 +407,11 @@ def screenGame(level):
         all_sprites.update()
         player_sprite.update()
 
-        if len(game_sprites) == 1 and eventStatus.isPlaying():
+        if len(game_sprites) == 1 and eventStatus.isPlaying():  # Проверка на смерть всех врагов
             eventStatus.changeEvent()
 
         for sprite in game_sprites:
-            if type(sprite) == Player and sprite.isDied:
+            if type(sprite) == Player and sprite.isDied:  # Проверка на смерть игрока
                 sprite.isDied = False
                 Explosion((all_sprites, explosion_sprites), (sprite.rect.centerx - camera.dx, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
                 numberOfWave -= 1
@@ -413,25 +423,25 @@ def screenGame(level):
                 eventStatus.changeEvent()
                 pygame.mixer.stop()
                 playerDie.play()
-            elif sprite.lives == 0:
+            elif sprite.lives == 0:  # Проверка на смерть врага
                 Explosion((all_sprites, explosion_sprites), (sprite.rect.centerx - camera.dx, sprite.rect.centery), round(max(sprite.rect.size) * 1.5), regularExplosionList)
                 sprite.kill()
                 pygame.mixer.stop()
                 enemyDie.play()
 
 
-        if pygame.time.get_ticks() - lastBonus > 15000 and eventStatus.isPlaying():
+        if pygame.time.get_ticks() - lastBonus > 15000 and eventStatus.isPlaying():  # Каждые 15 секунд появляется бонус
             lastBonus = pygame.time.get_ticks()
             Bonus((all_sprites, bonuses_sprites), randint(-200 + 50, 800 - 50))
 
-        if random() * 1000 > 995 and pygame.time.get_ticks() - lastMeteor > 5000:
+        if pygame.time.get_ticks() - lastMeteor > 5000:  # Каждые 5 секунд появляется объект заднего фона
             lastMeteor = pygame.time.get_ticks()
             if random() * 100 > 50:
                 MeteorWithAstronaut((all_sprites, background2_sprites), randint(-150, 750))
             else:
                 Satellite((all_sprites, background2_sprites), randint(-150, 750))
 
-        if len(background1_sprites) == 1:
+        if len(background1_sprites) == 1:  # Обновление заднего фона
             Background((all_sprites, background1_sprites))
 
         pygame.display.flip()
@@ -439,7 +449,7 @@ def screenGame(level):
         clock.tick(FPS)
 
 
-class Bonus(pygame.sprite.Sprite):
+class Bonus(pygame.sprite.Sprite):  # Спрайт бонуса игры
     def __init__(self, spriteGroups, posCenterX):
         super().__init__(*spriteGroups)
         self.image = choice(bonuses)
@@ -462,7 +472,7 @@ class Bonus(pygame.sprite.Sprite):
                 self.kill()
 
 
-class EventStatus():
+class EventStatus():  # Мониторит текущее событие в игре
     def __init__(self, times, event):
         self.events = ['Hiding', 'Spawning', 'Waiting', 'Playing']
         self.times = times
@@ -490,7 +500,7 @@ class EventStatus():
         self.startEvent = pygame.time.get_ticks()
 
 
-class GameObject(pygame.sprite.Sprite):
+class GameObject(pygame.sprite.Sprite):  # Игровой спрайт
     def __init__(self, spriteGroups, projectileGroups, posCenter, image, hp, lives, damage, countGuns, speedShooting, movingX, movingY):
         super().__init__(*spriteGroups)
         self.projectileGroups = projectileGroups
@@ -529,7 +539,7 @@ class GameObject(pygame.sprite.Sprite):
                 Projectile(self, self.rect.w // 3 * 2, movingY, posCenterY)
 
 
-class Player(GameObject):
+class Player(GameObject):  # Спрайт игрока
     def __init__(self, spriteGroups, projectileGroups, posCenter, image, imageShield, speed, hp, lives, damage, countGuns, speedShooting, movingX, movingY, hideTime, spawnTime, waitTime):
         super().__init__(spriteGroups, projectileGroups, posCenter, image, hp, lives, damage, countGuns, speedShooting, movingX, movingY)
         imageWithShield = imageShield
@@ -553,14 +563,14 @@ class Player(GameObject):
         self.hpShield = 300
         self.hpShieldnow = self.hpShield
 
-    def hitting(self, damage):
+    def hitting(self, damage):  # Нанести урон
         if self.isShield:
             self.hpShieldnow -= damage
         else:
             self.hpnow -= damage
 
 
-    def shield(self):
+    def shield(self):  # Включить щит
         self.image = self.images[2]
         self.rect = self.image.get_rect(center=self.rect.center)
         self.mask = pygame.mask.from_surface(self.image)
@@ -568,7 +578,7 @@ class Player(GameObject):
         pygame.mixer.stop()
         shieldUp.play()
 
-    def unshield(self):
+    def unshield(self):  # Отключить щит
         self.image = self.images[0]
         self.rect = self.image.get_rect(center=self.rect.center)
         self.mask = pygame.mask.from_surface(self.image)
@@ -597,7 +607,7 @@ class Player(GameObject):
             self.image = self.images[1]
         else:
             if pygame.time.get_ticks() - self.lastChangeImage > 1000 / FPSSpawnPlayer:
-                if pygame.time.get_ticks() - self.died <= self.hideTime + self.spawnTime:
+                if pygame.time.get_ticks() - self.died <= self.hideTime + self.spawnTime:  # При спавне картинка мигает
                     self.lastChangeImage = pygame.time.get_ticks()
                     self.image = self.images[self.numberImage]
                     self.numberImage = (self.numberImage + 1) % 2
@@ -618,8 +628,7 @@ class Player(GameObject):
                 self.tryShoot(-5, self.rect.top)
 
 
-
-class Enemy(GameObject):
+class Enemy(GameObject):  # Класс врага
     def __init__(self, spriteGroups, projectileGroups, settings, posCenter, image):
         super().__init__(spriteGroups, projectileGroups, posCenter, image, settings[0], 1, settings[1], settings[2], settings[3], settings[4], settings[5])
 
@@ -630,7 +639,7 @@ class Enemy(GameObject):
         else:
             self.imageProjectile = choice(lasers[::3])
 
-    def hitting(self, damage):
+    def hitting(self, damage):  # Нанести урон
         self.hpnow -= damage
 
     def update(self):
@@ -646,7 +655,7 @@ class Enemy(GameObject):
         self.tryShoot(5, self.rect.bottom)
 
 
-class Explosion(pygame.sprite.Sprite):
+class Explosion(pygame.sprite.Sprite):  # Спрайт взрыва
     def __init__(self, spriteGroups, posCenter, size, ExplosionList):
         super().__init__(*spriteGroups)
 
@@ -672,7 +681,7 @@ class Explosion(pygame.sprite.Sprite):
                 self.posCenterX = self.rect.centerx
 
 
-class Projectile(pygame.sprite.Sprite):
+class Projectile(pygame.sprite.Sprite):  # Класс снаряда
     def __init__(self, target, posShiftX, movingY, posCenterY):
         super().__init__(target.projectileGroups)
 
@@ -691,7 +700,7 @@ class Projectile(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.posCenterX = self.rect.centerx
 
-    def damageSprite(self, sprite):
+    def damageSprite(self, sprite):  # Нанести урон объекту
         sprite.hitting(self.damage)
         self.kill()
         return self.rect.center + (round(max(self.rect.size) * 1.5), regularExplosionList if self.type == Player else sonicExplosionList)
@@ -703,7 +712,7 @@ class Projectile(pygame.sprite.Sprite):
             self.kill()
 
 
-class Background(pygame.sprite.Sprite):
+class Background(pygame.sprite.Sprite):  # Спрайт заднего фона
     def __init__(self, spriteGroups, isFirst=False):
         super().__init__(spriteGroups)
         self.image = BackgroundGame
@@ -721,14 +730,14 @@ class Background(pygame.sprite.Sprite):
             self.kill()
 
 
-class Camera:
+class Camera:  # Меняет положение всех спрайтов относительно игрока
     def __init__(self):
         self.dx = 0
 
-    def apply(self, object):
+    def apply(self, object):  # Сменить позицию относительно игрока
         object.rect.centerx = object.posCenterX + self.dx
 
-    def isCameraMoving(self, target):
+    def isCameraMoving(self, target):  # Проверка на движение камеры за игроком
         if target.movingX > 0:
             if WIDTH // 2 - BackgroundGame.get_rect().w // 2 > self.dx - target.movingX:
                 return False
@@ -744,7 +753,7 @@ class Camera:
             return True
 
 
-    def tryCameraMoving(self, target):
+    def tryCameraMoving(self, target):  # Попробовать двигаться за камерой камере
         if self.isCameraMoving(target):
             self.dx -= target.movingX
             return True
@@ -762,7 +771,7 @@ class Camera:
         target.rect.centery = min(HEIGHT - 50, target.rect.centery)
 
 
-class MeteorWithAstronaut(pygame.sprite.Sprite):
+class MeteorWithAstronaut(pygame.sprite.Sprite):  # Спрайт заднего фона
     def __init__(self, spriteGroups, posCenterX):
         super().__init__(spriteGroups)
 
@@ -796,12 +805,7 @@ class MeteorWithAstronaut(pygame.sprite.Sprite):
         self.image.blit(self.imageAstronaut, astronautRect)
         self.lastUpdate = pygame.time.get_ticks()
 
-    def update(self):
-        self.rect.y += 2
-        if self.rect.y > HEIGHT:
-            self.kill()
-            return
-
+    def changeImage(self):  # Менять картинку каждую секунду
         if pygame.time.get_ticks() - self.lastUpdate > 1000:
             self.lastUpdate = pygame.time.get_ticks()
             self.imageAstronaut = list(set(self.imagesAstronaut) - {self.imageAstronaut})[0]
@@ -814,8 +818,15 @@ class MeteorWithAstronaut(pygame.sprite.Sprite):
             astronautRect.left = self.limit
         self.image.blit(self.imageAstronaut, astronautRect)
 
+    def update(self):
+        self.rect.y += 2
+        if self.rect.y > HEIGHT:
+            self.kill()
+        else:
+            self.changeImage()
 
-class Satellite(pygame.sprite.Sprite):
+
+class Satellite(pygame.sprite.Sprite):  # Спрайт заднего фона
     def __init__(self, spriteGroups, posCenterX):
         super().__init__(spriteGroups)
 
@@ -830,7 +841,7 @@ class Satellite(pygame.sprite.Sprite):
             self.kill()
 
 
-def screenSettings():
+def screenSettings():  # Окно настроек
     bigShip = load_ship()[1]
     complexity = int(cursor.execute('SELECT Value FROM UserData WHERE Information = \'complexity\'').fetchone()[0])
 
@@ -901,7 +912,7 @@ def screenSettings():
         clock.tick(FPS)
 
 
-class Button(pygame.sprite.Sprite):
+class Button(pygame.sprite.Sprite):  # Спрайт кнопки
     def __init__(self, spriteGroups, colors, size, posCenter):
         super().__init__(spriteGroups)
         self.colors = colors
@@ -913,14 +924,14 @@ class Button(pygame.sprite.Sprite):
         self.rect.centerx = self.posCenter[0]
         self.rect.centery = self.posCenter[1]
 
-    def isPressed(self):
+    def isPressed(self):  # Наведена ли мышь
         return self.rect.collidepoint(pygame.mouse.get_pos())
 
     def update(self):
         self.draw()
 
 
-class ButtonWithText(Button):
+class ButtonWithText(Button):  # Спрайт кнопки с текстом
     def __init__(self, spriteGroups, colors, size, posCenter, textInfo):
         super().__init__(spriteGroups, colors, size, posCenter)
         self.textInfo = textInfo
@@ -934,7 +945,7 @@ class ButtonWithText(Button):
             self.image.fill(self.colors[0])
         draw_text(self.image, self.textInfo[0], self.textInfo[1], self.rect.width // 2, self.rect.height // 2 - self.textInfo[1] // 4, self.textInfo[2])
 
-class ButtonWithArrow(Button):
+class ButtonWithArrow(Button):  # Спрайт кнопки со стрелкой
     def __init__(self, spriteGroups, colors, size, posCenter, polygonInfo, rectInfo):
         super().__init__(spriteGroups, colors, size, posCenter)
         self.polygonInfo = polygonInfo
